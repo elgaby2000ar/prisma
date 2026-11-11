@@ -43,14 +43,32 @@ jobs:
           sed -i 's/<activity/<activity android:screenOrientation="portrait"/' android/app/src/main/AndroidManifest.xml
           # número de versión = número de compilación
           sed -i "s/versionCode 1/versionCode ${GITHUB_RUN_NUMBER}/; s/versionName \"1.0\"/versionName \"1.${GITHUB_RUN_NUMBER}\"/" android/app/build.gradle
+          # firmar SIEMPRE con la misma clave, así las actualizaciones se instalan encima
+          cat >> android/app/build.gradle <<GRADLE
+          android {
+              signingConfigs {
+                  prisma {
+                      storeFile file("${GITHUB_WORKSPACE}/android-assets/debug.keystore")
+                      storePassword "android"
+                      keyAlias "androiddebugkey"
+                      keyPassword "android"
+                  }
+              }
+              buildTypes {
+                  debug { signingConfig signingConfigs.prisma }
+                  release { signingConfig signingConfigs.prisma }
+              }
+          }
+          GRADLE
 
       - name: Compilar
         run: |
-          mkdir -p ~/.android && cp android-assets/debug.keystore ~/.android/debug.keystore
           cd app/android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
           cp app/build/outputs/apk/debug/app-debug.apk ../../prisma.apk
+          BT=$(ls $ANDROID_HOME/build-tools | sort -V | tail -1)
+          $ANDROID_HOME/build-tools/$BT/apksigner verify --print-certs ../../prisma.apk | grep -i "SHA-1"
 
       - uses: actions/upload-artifact@v4
         with:
