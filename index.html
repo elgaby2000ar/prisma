@@ -500,9 +500,17 @@ function generate(seed, P) {
     }
     const k = C.length, flips = Math.max(P.minTaps || 2, Math.round(k * 0.7));
     if (flips > k) continue;
-    const idx = C.map((_, j) => j); for (let i = idx.length - 1; i > 0; i--) { const j = ri(i + 1); [idx[i], idx[j]] = [idx[j], idx[i]]; }
-    for (let i = 0; i < flips; i++) for (const m of C[idx[i]]) L.pieces[m].o ^= 1;
-    L.minTaps = flips; L.seed = seed;
+    // elegir una mezcla inicial que no toque bombas (si se puede)
+    let pick = null;
+    for (let tries = 0; tries < 40; tries++) {
+      const idx = C.map((_, j) => j); for (let i = idx.length - 1; i > 0; i--) { const j = ri(i + 1); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+      const fl = tries < 15 ? flips : Math.max(1, Math.min(k, flips + ri(3) - 1)); let st = 0; for (let i = 0; i < fl; i++) st |= 1 << idx[i];
+      if (!pick) pick = st;
+      if (!L.bombs.some(([bx, by]) => out[st][id(bx, by)])) { pick = st; break; }
+    }
+    for (let j = 0; j < k; j++) if ((pick >> j) & 1) for (const m of C[j]) L.pieces[m].o ^= 1;
+    let pc = 0; for (let j = 0; j < k; j++) if ((pick >> j) & 1) pc++;
+    L.minTaps = pc; L.seed = seed;
     return L;
   }
   return null;
@@ -724,6 +732,63 @@ function drawMonster(c, cx, cy, cs, t, st, now) {
   }
 }
 
+// ================= muros y bombas =================
+function drawWall(c, x, y, cs) {
+  const p = cs * .06, w = cs - p * 2;
+  // bloque de acero
+  rr(c, x + p, y + p + 3, w, w, cs * .12); c.fillStyle = '#05040c'; c.fill();
+  rr(c, x + p, y + p, w, w, cs * .12);
+  const g = c.createLinearGradient(x, y, x + cs, y + cs); g.addColorStop(0, '#7b80a6'); g.addColorStop(.45, '#454a6e'); g.addColorStop(1, '#262a44');
+  c.fillStyle = g; c.fill(); c.lineWidth = 2; c.strokeStyle = '#a7acd0'; c.stroke();
+  // franja de peligro
+  c.save(); rr(c, x + p, y + cs * .38, w, cs * .24, 0); c.clip();
+  c.fillStyle = '#ffcc1a'; c.fillRect(x, y + cs * .38, cs, cs * .24);
+  c.fillStyle = '#1a1a1a'; for (let i = -2; i < 8; i++) { c.beginPath(); const sx = x + i * cs * .2; c.moveTo(sx, y + cs * .62); c.lineTo(sx + cs * .1, y + cs * .62); c.lineTo(sx + cs * .2, y + cs * .38); c.lineTo(sx + cs * .1, y + cs * .38); c.closePath(); c.fill(); }
+  c.restore();
+  // remaches
+  c.fillStyle = '#c9cce6'; const q = cs * .2;
+  [[q, q], [cs - q, q], [q, cs - q], [cs - q, cs - q]].forEach(([dx, dy]) => { c.beginPath(); c.arc(x + dx, y + dy, cs * .045, 0, 7); c.fill(); });
+}
+function drawBomb(c, cx, cy, cs, now, seed, board) {
+  const r = cs * .31, wob = Math.sin(now / 160 + seed) * .06;
+  c.save(); c.translate(cx, cy + cs * .06); c.rotate(wob);
+  // sombra
+  c.fillStyle = 'rgba(0,0,0,.4)'; c.beginPath(); c.ellipse(0, r * 1.02, r * .85, r * .2, 0, 0, 7); c.fill();
+  // mecha
+  c.strokeStyle = '#c9a26b'; c.lineWidth = cs * .05; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(r * .45, -r * .85); c.quadraticCurveTo(r * .95, -r * 1.35, r * .7, -r * 1.55); c.stroke();
+  // tapón metálico
+  c.save(); c.rotate(.6); c.fillStyle = '#8a8fb0'; c.fillRect(-r * .22, -r * 1.12, r * .44, r * .3); c.restore();
+  // cuerpo
+  const g = c.createRadialGradient(-r * .35, -r * .35, r * .1, 0, 0, r);
+  g.addColorStop(0, '#5a5f7a'); g.addColorStop(.35, '#24263a'); g.addColorStop(1, '#0a0b14');
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, r, 0, 7); c.fill();
+  c.lineWidth = 2; c.strokeStyle = '#ff3b6b'; c.globalAlpha = .55 + .45 * Math.sin(now / 200 + seed); c.stroke(); c.globalAlpha = 1;
+  // brillo
+  c.fillStyle = 'rgba(255,255,255,.55)'; c.beginPath(); c.ellipse(-r * .38, -r * .42, r * .16, r * .09, -.7, 0, 7); c.fill();
+  // carita nerviosa
+  const blink = ((now / 1000 + seed * .3) % 2.6) < .12;
+  c.fillStyle = '#fff';
+  for (const s of [-1, 1]) {
+    if (blink) { c.fillRect(s * r * .3 - r * .13, -r * .02, r * .26, r * .05); continue; }
+    c.beginPath(); c.ellipse(s * r * .3, 0, r * .15, r * .19, 0, 0, 7); c.fill();
+    c.fillStyle = '#0a0b14'; c.beginPath(); c.arc(s * r * .3 + Math.sin(now / 300 + seed) * r * .05, r * .03, r * .07, 0, 7); c.fill(); c.fillStyle = '#fff';
+  }
+  // cejas preocupadas y boquita
+  c.strokeStyle = '#fff'; c.lineWidth = cs * .025;
+  c.beginPath(); c.moveTo(-r * .45, -r * .3); c.lineTo(-r * .16, -r * .22); c.moveTo(r * .45, -r * .3); c.lineTo(r * .16, -r * .22); c.stroke();
+  c.beginPath(); for (let i = 0; i <= 6; i++) { const xx = -r * .2 + i * r * .4 / 6, yy = r * .4 + (i % 2 ? -1 : 1) * r * .04; i ? c.lineTo(xx, yy) : c.moveTo(xx, yy); } c.stroke();
+  // chispa de la mecha
+  const sx = r * .7, sy = -r * 1.55, f = .7 + .3 * Math.sin(now / 40 + seed);
+  c.globalCompositeOperation = 'lighter';
+  const sg = c.createRadialGradient(sx, sy, 0, sx, sy, cs * .14 * f); sg.addColorStop(0, '#fff8c0'); sg.addColorStop(.4, '#ffb020'); sg.addColorStop(1, 'rgba(255,60,0,0)');
+  c.fillStyle = sg; c.beginPath(); c.arc(sx, sy, cs * .14 * f, 0, 7); c.fill();
+  c.strokeStyle = '#ffe680'; c.lineWidth = 1.5;
+  for (let i = 0; i < 5; i++) { const a = Math.random() * 6.28, l = cs * (.05 + Math.random() * .07); c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx + Math.cos(a) * l, sy + Math.sin(a) * l); c.stroke(); }
+  c.globalCompositeOperation = 'source-over';
+  c.restore();
+}
+
 // ===== Estética v2: fondo, confeti, tema por mundo =====
 const WTHEME = [{ a: '#ff3b6b', b: '#7a2cff' }, { a: '#ff9f1c', b: '#00c2a8' }, { a: '#3dffb0', b: '#2f7bff' }];
 function setTheme(i) { const t = WTHEME[i] || WTHEME[0]; document.documentElement.style.setProperty('--wa', t.a); document.documentElement.style.setProperty('--wb', t.b); bgFx.col = t.a; bgFx.col2 = t.b; window.curWA = t.a; }
@@ -793,7 +858,7 @@ class Board {
     this.base = this.orient.slice(); this.C = controls(this.L);
     this.ctrlOf = []; this.C.forEach((ms, j) => ms.forEach(m => this.ctrlOf[m] = j));
     this.booms = this.booms || []; this.fire = this.fire || [];
-    if (!keep) { this.booms = []; this.fire = []; this.hitSet = null; this.quake = 0; this.burnT = 0; this.pops = []; this.litSet = null; }
+    if (!keep) { this.booms = []; this.fire = []; this.hitSet = null; this.quake = 0; this.burnT = 0; this.pops = []; this.litSet = null; this.exploded = new Set(); }
     this.pops = this.pops || [];
     if (!keep) { this.taps = 0; this.hints = 0; this.solved = false; this.failed = false; this.t0 = performance.now(); this.tEnd = 0; this.hl = -1; this.parts = []; this.locked = false; }
     this.limit = this.opt.noLimit ? 0 : (this.L.limit || 0); this.timeLimit = this.opt.noLimit ? 0 : (this.L.timeLimit || 0);
@@ -881,6 +946,7 @@ class Board {
   explode(list) {
     const now = performance.now(), cs = this.cs;
     sfx('boom'); this.quake = now;
+    this.exploded = this.exploded || new Set(); list.forEach(i => this.exploded.add(i));
     for (const i of list) { const [x, y] = this.L.bombs[i]; this.pop((x + .5) * this.cs, (y + .2) * this.cs, '¡BOOM!', '#ff5a3a', 1.3); }
     if (navigator.vibrate) try { navigator.vibrate([80, 40, 160]); } catch (e) { }
     for (const i of list) {
@@ -938,7 +1004,7 @@ class Board {
     for (let x = 1; x < L.w; x++) { c.beginPath(); c.moveTo(x * cs + .5, 6); c.lineTo(x * cs + .5, this.ch - 6); c.stroke(); }
     for (let y = 1; y < L.h; y++) { c.beginPath(); c.moveTo(6, y * cs + .5); c.lineTo(this.cw - 6, y * cs + .5); c.stroke(); }
     // muros
-    for (const [x, y] of L.walls) { rr(c, x * cs + 3, y * cs + 3, cs - 6, cs - 6, 8); const g = c.createLinearGradient(0, y * cs, 0, y * cs + cs); g.addColorStop(0, '#2c2c5c'); g.addColorStop(1, '#1a1a3c'); c.fillStyle = g; c.fill(); c.strokeStyle = '#3c3c78'; c.stroke(); }
+    for (const [x, y] of L.walls) drawWall(c, x * cs, y * cs, cs);
     // rayos
     c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
     const ctr = v => (v + .5) * cs;
@@ -952,7 +1018,9 @@ class Board {
     c.setLineDash([]); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
     // bombas
     for (const [x, y] of L.bombs) {
-      const hit = this.col[y * L.w + x] > 0; let cx = ctr(x), cy = ctr(y);
+      const bi = L.bombs.findIndex(b => b[0] === x && b[1] === y);
+      const hit = this.col[y * L.w + x] > 0 && (this.opt.editor || (this.exploded && this.exploded.has(bi))); let cx = ctr(x), cy = ctr(y);
+      if (this.col[y * L.w + x] > 0 && !hit) { cx += Math.sin(now / 25) * cs * .03; c.save(); c.shadowColor = '#ff2040'; c.shadowBlur = 20 + 10 * Math.sin(now / 80); c.beginPath(); c.arc(cx, cy, cs * .32, 0, 7); c.fillStyle = 'rgba(255,40,60,.25)'; c.fill(); c.restore(); }
       if (hit) {
         // cráter chamuscado
         const g = c.createRadialGradient(cx, cy, 2, cx, cy, cs * .5); g.addColorStop(0, 'rgba(255,120,30,.35)'); g.addColorStop(.5, 'rgba(60,20,10,.6)'); g.addColorStop(1, 'transparent');
@@ -965,10 +1033,7 @@ class Board {
         if (Math.random() < .12) this.fire.push({ x: cx + (Math.random() - .5) * cs * .3, y: cy, vx: (Math.random() - .5) * .3, vy: -.5 - Math.random() * .5, life: .7, r: cs * .12, kind: 'smoke' });
         continue;
       }
-      c.beginPath(); c.arc(cx, cy, cs * .26, 0, 7); c.fillStyle = '#1b1b30'; c.fill();
-      c.lineWidth = 3; c.strokeStyle = '#d0304a'; c.stroke();
-      for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; c.beginPath(); c.moveTo(cx + Math.cos(a) * cs * .27, cy + Math.sin(a) * cs * .27); c.lineTo(cx + Math.cos(a) * cs * .36, cy + Math.sin(a) * cs * .36); c.stroke(); }
-      c.shadowBlur = 0; c.fillStyle = '#ff4d6a'; c.font = `800 ${cs * .24}px Inter`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('!', cx, cy + 1);
+      drawBomb(c, cx, cy, cs, now, x * 7 + y * 3, this);
     }
     // portales
     for (const p of (L.portals || [])) {
@@ -1148,7 +1213,9 @@ setInterval(() => { if ($('game').classList.contains('on') && !gb.solved && !gb.
 
 const TIPS = [
   [L => true, 'Tocá los <b>espejos</b> para girarlos. Llevá el rayo hasta el <b>monstruo</b> 👾 para electrocutarlo, sin tocar la <b>bomba</b> 💣. Cada monstruo solo cae con <b>su color</b>. Ojo: cada giro gasta <b>⚡ energía</b>. ¡Pensá antes de tocar!'],
-  [L => L.pieces.some(p => p.fixed), 'Los espejos grises con tornillos están <b>fijos</b>. Hay <b>varios monstruos</b>: hay que electrocutarlos a todos a la vez.'],
+  [L => L.walls.length > 0, 'Los <b>bloques de metal</b> con franja amarilla son <b>muros</b> 🧱: frenan el rayo, no lo dejan pasar.'],
+  [L => L.pieces.some(p => p.fixed), 'Los espejos grises con tornillos están <b>fijos</b>: no se pueden girar.'],
+  [L => L.targets.length > 1, 'Hay <b>varios monstruos</b>: hay que electrocutarlos a todos <b>a la vez</b>.'],
   [L => L.pieces.some(p => p.t === 's'), 'El <b>divisor</b> (celeste) refleja el rayo y además lo deja pasar: ¡uno se vuelve dos!'],
   [L => !!L.timeLimit, '⚠️ <b>NIVEL JEFE</b>: además de la energía, tenés <b>tiempo limitado</b>. ¡Rápido!'],
   [L => (L.portals || []).length > 0, '🌀 <b>Portales</b>: el rayo que entra en uno sale por el otro del mismo color, en la misma dirección.'],
@@ -1473,7 +1540,8 @@ $('mHow').onclick = () => modal(`<h2>Cómo jugar</h2><ul class="how">
   <li>🔦 Los <b>láseres</b> disparan rayos de luz.</li>
   <li>╱ Tocá los <b>espejos</b> para girarlos y desviar el rayo.</li>
   <li>👾 Electrocutá <b>a todos los monstruos</b> a la vez, cada uno con <b>su color</b>. Si le llega otro color, se ríe detrás de un escudo.</li>
-  <li>💣 El rayo <b>no puede tocar las bombas</b>.</li>
+  <li>💣 El rayo <b>no puede tocar las bombas</b>: ¡explotan!</li>
+  <li>🧱 Los <b>bloques de metal</b> con franja amarilla son <b>muros</b>: frenan el rayo.</li>
   <li>┆ El <b>divisor</b> parte el rayo en dos.</li>
   <li>🟣 El monstruo violeta necesita rojo + azul al mismo tiempo.</li>
   <li>🌀 Los <b>portales</b> teletransportan el rayo al otro del mismo color.</li>
