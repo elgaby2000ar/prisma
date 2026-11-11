@@ -475,6 +475,21 @@ function boom() {
   // chisporroteo
   for (let i = 0; i < 6; i++) tone(800 + Math.random() * 1500, .15 + Math.random() * .5, .04, 'square', .025);
 }
+function burnSfx() {
+  const t = AC.currentTime, sr = AC.sampleRate, len = sr * 1.4;
+  const buf = AC.createBuffer(1, len, sr), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.min(1, i / (sr * .25)) * Math.pow(1 - i / len, 1.3);
+  const n = AC.createBufferSource(); n.buffer = buf;
+  const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = .8; bp.frequency.setValueAtTime(300, t); bp.frequency.exponentialRampToValueAtTime(2500, t + .5); bp.frequency.exponentialRampToValueAtTime(600, t + 1.3);
+  const g = AC.createGain(); g.gain.value = .5; n.connect(bp); bp.connect(g); g.connect(AC.destination); n.start(t);
+  // grito del monstruo
+  const o = AC.createOscillator(), og = AC.createGain(), lfo = AC.createOscillator(), lg = AC.createGain();
+  o.type = 'sawtooth'; o.frequency.setValueAtTime(820, t + .05); o.frequency.exponentialRampToValueAtTime(160, t + 1.1);
+  lfo.frequency.value = 18; lg.gain.value = 40; lfo.connect(lg); lg.connect(o.frequency);
+  og.gain.setValueAtTime(.0001, t); og.gain.exponentialRampToValueAtTime(.07, t + .1); og.gain.exponentialRampToValueAtTime(.0001, t + 1.15);
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200;
+  o.connect(lp); lp.connect(og); og.connect(AC.destination); o.start(t); lfo.start(t); o.stop(t + 1.2); lfo.stop(t + 1.2);
+}
 function sfx(k) {
   if (muted) return;
   try {
@@ -483,10 +498,113 @@ function sfx(k) {
     if (k === 'tap') tone(660, 0, .07, 'triangle', .1, 880);
     if (k === 'boom') boom();
     if (k === 'lit') tone(1200, 0, .12, 'sine', .06, 1500);
+    if (k === 'zap') { for (let i = 0; i < 7; i++) tone(300 + Math.random() * 900, i * .025, .03, 'square', .05); tone(520, .05, .25, 'sawtooth', .05, 700); }
+    if (k === 'burn') burnSfx();
     if (k === 'win') [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .09, .3, 'triangle', .12));
     if (k === 'lose') [392, 330, 262].forEach((f, i) => tone(f, i * .12, .3, 'triangle', .1));
     if (k === 'beep') tone(880, 0, .12, 'square', .06);
   } catch (e) { }
+}
+
+// ================= monstruos =================
+const BURN_MS = 1500;
+function lerpCol(a, b, k) { const p = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16)); const A = p(a), B = p(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * k)).join(',')})`; }
+function drawMonster(c, cx, cy, cs, t, st, now) {
+  const seed = (t.x * 7 + t.y * 13) % 17, variant = (t.x * 3 + t.y * 5) % 3;
+  const base = COL[t.c];
+  let r = cs * .33, k = 0, alpha = 1;
+  if (st.mode === 'burn') { k = Math.min(1, (now - st.t) / BURN_MS); if (k > .55) { const q = (k - .55) / .45; r *= 1 - q * .85; alpha = 1 - q; } }
+  if (st.mode === 'dead' || alpha <= 0) {
+    // restos: mancha chamuscada y brasas
+    const g = c.createRadialGradient(cx, cy + cs * .15, 1, cx, cy + cs * .15, cs * .38); g.addColorStop(0, 'rgba(255,110,30,.35)'); g.addColorStop(.4, 'rgba(40,15,10,.55)'); g.addColorStop(1, 'transparent');
+    c.fillStyle = g; c.beginPath(); c.ellipse(cx, cy + cs * .15, cs * .38, cs * .2, 0, 0, 7); c.fill();
+    for (let i = 0; i < 4; i++) { const f = .5 + .5 * Math.sin(now / 90 + i * 2 + seed); c.fillStyle = `rgba(255,${130 + 90 * f | 0},40,${.5 + .5 * f})`; c.beginPath(); c.arc(cx + (i - 1.5) * cs * .09, cy + cs * .17 + (i % 2) * 3, 2.2, 0, 7); c.fill(); }
+    return;
+  }
+  let ox = 0, oy = Math.sin(now / 420 + seed) * r * .07;
+  if (st.mode === 'zap' || (st.mode === 'burn' && k < .6)) { ox = (Math.random() * 2 - 1) * r * .09; oy += (Math.random() * 2 - 1) * r * .07; }
+  const x = cx + ox, y = cy + oy;
+  c.save(); c.globalAlpha = alpha;
+  // sombra en el piso
+  c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(cx, cy + cs * .36, r * .75, r * .16, 0, 0, 7); c.fill();
+  // cuerpo (blob)
+  const body = () => { c.beginPath(); for (let i = 0; i <= 40; i++) { const a = i / 40 * Math.PI * 2; const w = 1 + .07 * Math.sin(a * 5 + now / 260 + seed) + (Math.sin(a) > .55 ? -.08 : 0); const px = x + Math.cos(a) * r * w, py = y + Math.sin(a) * r * w * .95; i ? c.lineTo(px, py) : c.moveTo(px, py); } c.closePath(); };
+  // cuernos / antenas / púas
+  const dark = st.mode === 'burn' ? Math.min(1, k * 1.8) : 0;
+  const partCol = t.c === 3 ? COL[3] : base;
+  c.fillStyle = lerpCol(partCol.length === 7 ? partCol : '#b34dff', '#120808', dark); c.strokeStyle = c.fillStyle; c.lineWidth = r * .1; c.lineCap = 'round';
+  if (variant === 0) { [-1, 1].forEach(s => { c.beginPath(); c.moveTo(x + s * r * .45, y - r * .7); c.quadraticCurveTo(x + s * r * .95, y - r * 1.1, x + s * r * .8, y - r * 1.45); c.lineTo(x + s * r * .2, y - r * .8); c.closePath(); c.fill(); }); }
+  else if (variant === 1) { [-1, 1].forEach(s => { const sw = Math.sin(now / 300 + s + seed) * r * .15; c.beginPath(); c.moveTo(x + s * r * .3, y - r * .85); c.quadraticCurveTo(x + s * r * .5, y - r * 1.3, x + s * r * .55 + sw, y - r * 1.45); c.stroke(); c.beginPath(); c.arc(x + s * r * .55 + sw, y - r * 1.45, r * .16, 0, 7); c.fill(); }); }
+  else { for (let i = -1; i <= 1; i++) { c.beginPath(); c.moveTo(x + i * r * .45 - r * .2, y - r * .82 + Math.abs(i) * r * .12); c.lineTo(x + i * r * .45, y - r * 1.3 + Math.abs(i) * r * .2); c.lineTo(x + i * r * .45 + r * .2, y - r * .82 + Math.abs(i) * r * .12); c.closePath(); c.fill(); } }
+  // relleno del cuerpo
+  let fill;
+  if (t.c === 3) { fill = c.createLinearGradient(x - r, 0, x + r, 0); fill.addColorStop(0, lerpCol(COL[1], '#120808', dark)); fill.addColorStop(.5, lerpCol('#b34dff', '#120808', dark)); fill.addColorStop(1, lerpCol(COL[2], '#120808', dark)); }
+  else { fill = c.createRadialGradient(x - r * .3, y - r * .4, r * .1, x, y, r * 1.1); fill.addColorStop(0, lerpCol('#ffffff', '#2a1010', dark)); fill.addColorStop(.25, lerpCol(base, '#1a0a0a', dark)); fill.addColorStop(1, lerpCol('#1a0d2e', '#060303', dark)); }
+  const zapFlash = st.mode === 'zap' && Math.sin(now / 35) > .3;
+  c.shadowColor = st.mode === 'burn' ? '#ff7a1a' : (zapFlash ? '#ffffff' : base); c.shadowBlur = st.mode === 'zap' ? 26 : 14;
+  body(); c.fillStyle = zapFlash ? '#fff7d0' : fill; c.fill(); c.shadowBlur = 0;
+  c.lineWidth = 2; c.strokeStyle = 'rgba(0,0,0,.35)'; c.stroke();
+  // ojos
+  const ex = r * .36, ey = y - r * .18, er = r * .26;
+  const dead = st.mode === 'zap' || st.mode === 'burn';
+  for (const s of [-1, 1]) {
+    const px = x + s * ex;
+    if (dead) {
+      c.strokeStyle = st.mode === 'burn' ? '#ffb070' : '#1a0a20'; c.lineWidth = r * .1;
+      c.beginPath(); c.moveTo(px - er * .6, ey - er * .6); c.lineTo(px + er * .6, ey + er * .6); c.moveTo(px + er * .6, ey - er * .6); c.lineTo(px - er * .6, ey + er * .6); c.stroke();
+      continue;
+    }
+    const blink = ((now / 1000 + seed * .37) % 3.7) < .14;
+    if (blink) { c.strokeStyle = '#1a0a20'; c.lineWidth = r * .08; c.beginPath(); c.moveTo(px - er, ey); c.lineTo(px + er, ey); c.stroke(); continue; }
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(px, ey, er, 0, 7); c.fill();
+    const lx = Math.sin(now / 900 + seed) * er * .45, ly = Math.cos(now / 1300 + seed) * er * .3;
+    c.fillStyle = '#14081e'; c.beginPath(); c.arc(px + lx, ey + ly, er * .5, 0, 7); c.fill();
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(px + lx - er * .18, ey + ly - er * .18, er * .14, 0, 7); c.fill();
+    // ceja malvada
+    c.strokeStyle = '#14081e'; c.lineWidth = r * .09; c.beginPath(); c.moveTo(px - s * er * 1.1, ey - er * 1.25); c.lineTo(px + s * er * .7, ey - er * .8); c.stroke();
+  }
+  // boca
+  const my = y + r * .38;
+  if (st.mode === 'zap' || st.mode === 'burn') {
+    c.fillStyle = '#14081e'; c.beginPath(); c.ellipse(x, my, r * .2, r * .24 + Math.sin(now / 50) * r * .04, 0, 0, 7); c.fill();
+  } else {
+    const smirk = st.mode === 'shield' ? r * .12 : 0;
+    c.fillStyle = '#14081e'; c.beginPath(); c.moveTo(x - r * .5, my - r * .1 - smirk); c.quadraticCurveTo(x, my + r * .35, x + r * .5, my - r * .1 + smirk); c.closePath(); c.fill();
+    c.fillStyle = '#fff'; const n = 4;
+    for (let i = 0; i < n; i++) { const tx = x - r * .38 + i * r * .76 / (n - 1); const ty = my - r * .1 + (i - 1.5) * smirk * -.5 * 0; c.beginPath(); c.moveTo(tx - r * .07, ty - r * .02); c.lineTo(tx + r * .07, ty - r * .02); c.lineTo(tx, ty + r * .14); c.closePath(); c.fill(); }
+  }
+  c.restore();
+  // escudo si recibe el color equivocado
+  if (st.mode === 'shield') {
+    const sc = COL[st.got];
+    c.save(); c.globalCompositeOperation = 'lighter';
+    c.strokeStyle = sc; c.globalAlpha = .55 + .25 * Math.sin(now / 120); c.lineWidth = 2.5; c.setLineDash([5, 4]); c.lineDashOffset = now / 40;
+    c.beginPath(); c.arc(cx, cy, cs * .46, 0, 7); c.stroke(); c.setLineDash([]);
+    const g = c.createRadialGradient(cx, cy, cs * .3, cx, cy, cs * .48); g.addColorStop(0, 'transparent'); g.addColorStop(1, sc + '55'); c.fillStyle = g; c.beginPath(); c.arc(cx, cy, cs * .48, 0, 7); c.fill();
+    c.restore();
+    c.font = `800 ${cs * .2}px Inter`; c.textAlign = 'center'; c.fillStyle = '#fff'; c.globalAlpha = .9;
+    c.fillText('jaja', cx + cs * .3, cy - cs * .38 + Math.sin(now / 200) * 2); c.globalAlpha = 1;
+  }
+  // electricidad
+  if (st.mode === 'zap') {
+    c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = '#fffbe0'; c.shadowColor = '#9ff'; c.shadowBlur = 10; c.lineWidth = 1.6;
+    for (let b = 0; b < 3; b++) { const a0 = Math.random() * 6.28; c.beginPath(); let px = cx + Math.cos(a0) * r * .9, py = cy + Math.sin(a0) * r * .9; c.moveTo(px, py); for (let s = 0; s < 4; s++) { px += Math.cos(a0) * r * .18 + (Math.random() - .5) * r * .4; py += Math.sin(a0) * r * .18 + (Math.random() - .5) * r * .4; c.lineTo(px, py); } c.stroke(); }
+    c.restore();
+  }
+  // llamas
+  if (st.mode === 'burn' && k < .95) {
+    c.save(); c.globalCompositeOperation = 'lighter';
+    const fh = cs * (.25 + .7 * Math.min(1, k * 2.2)) * (k > .7 ? (1 - (k - .7) / .3) : 1);
+    for (let i = 0; i < 7; i++) {
+      const fx = cx + (i - 3) * cs * .1 + Math.sin(now / 70 + i * 1.7) * cs * .03;
+      const h = fh * (.6 + .4 * Math.sin(now / 55 + i * 2.3)) * (1 - Math.abs(i - 3) * .12);
+      const fy = cy + cs * .2;
+      const g = c.createLinearGradient(fx, fy, fx, fy - h);
+      g.addColorStop(0, 'rgba(255,240,180,.95)'); g.addColorStop(.35, 'rgba(255,150,30,.85)'); g.addColorStop(.75, 'rgba(255,50,20,.5)'); g.addColorStop(1, 'rgba(120,0,0,0)');
+      c.fillStyle = g; c.beginPath(); c.moveTo(fx - cs * .08, fy); c.quadraticCurveTo(fx - cs * .09, fy - h * .5, fx + Math.sin(now / 80 + i) * cs * .04, fy - h); c.quadraticCurveTo(fx + cs * .09, fy - h * .5, fx + cs * .08, fy); c.closePath(); c.fill();
+    }
+    c.restore();
+  }
 }
 
 // ================= tablero =================
@@ -504,7 +622,7 @@ class Board {
     this.base = this.orient.slice(); this.C = controls(this.L);
     this.ctrlOf = []; this.C.forEach((ms, j) => ms.forEach(m => this.ctrlOf[m] = j));
     this.booms = this.booms || []; this.fire = this.fire || [];
-    if (!keep) { this.booms = []; this.fire = []; this.hitSet = null; this.quake = 0; }
+    if (!keep) { this.booms = []; this.fire = []; this.hitSet = null; this.quake = 0; this.burnT = 0; }
     if (!keep) { this.taps = 0; this.hints = 0; this.solved = false; this.failed = false; this.t0 = performance.now(); this.tEnd = 0; this.hl = -1; this.parts = []; this.locked = false; }
     this.limit = this.opt.noLimit ? 0 : (this.L.limit || 0); this.timeLimit = this.opt.noLimit ? 0 : (this.L.timeLimit || 0);
     this.retrace(); this.resize();
@@ -556,14 +674,16 @@ class Board {
     this.taps++; this.hl = -1;
     const wasHit = this.bombHit;
     const more = this.retrace();
-    sfx('tap'); if (more) sfx('lit');
+    sfx('tap'); if (more) sfx('zap');
     if (this.newBooms.length) this.explode(this.newBooms);
     if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) { }
     if (this.opt.onTap) this.opt.onTap(this);
     if (isSolved(this.L, this.col)) {
       this.solved = true; this.tEnd = performance.now();
-      this.burst();
-      setTimeout(() => this.opt.onSolve && this.opt.onSolve(this), 650);
+      this.burnT = performance.now() + 250; this.booms = this.booms || [];
+      setTimeout(() => sfx('burn'), 250);
+      setTimeout(() => this.burst(), 250 + BURN_MS * .8);
+      setTimeout(() => this.opt.onSolve && this.opt.onSolve(this), 250 + BURN_MS + 350);
     } else if (this.limit && this.taps >= this.limit) this.fail('energy');
   }
   explode(list) {
@@ -687,16 +807,17 @@ class Board {
       }
       c.restore(); c.shadowBlur = 0;
     });
-    // objetivos
-    for (const t of L.targets) {
-      const cx = ctr(t.x), cy = ctr(t.y), got = this.col[t.y * L.w + t.x], ok = got === t.c, r = cs * .27;
-      if (ok) { c.shadowColor = COL[t.c]; c.shadowBlur = 22 + 6 * Math.sin(now / 150); c.beginPath(); c.arc(cx, cy, r, 0, 7); c.fillStyle = COL[t.c]; c.fill(); c.shadowBlur = 0; c.beginPath(); c.arc(cx, cy, r * .4, 0, 7); c.fillStyle = '#fff'; c.fill(); }
-      else { c.beginPath(); c.arc(cx, cy, r, 0, 7); c.fillStyle = '#0e0e28'; c.fill(); }
-      c.lineWidth = 4;
-      if (t.c === 3) { c.strokeStyle = COL[1]; c.beginPath(); c.arc(cx, cy, r, Math.PI / 2, Math.PI * 1.5); c.stroke(); c.strokeStyle = COL[2]; c.beginPath(); c.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2); c.stroke(); }
-      else { c.strokeStyle = COL[t.c]; c.beginPath(); c.arc(cx, cy, r, 0, 7); c.stroke(); }
-      if (!ok) { c.beginPath(); c.arc(cx, cy, r * .55, 0, 7); c.lineWidth = 2; c.strokeStyle = t.c === 3 ? COL[3] : COL[t.c]; c.globalAlpha = .45; c.stroke(); c.globalAlpha = 1; if (got) { c.beginPath(); c.arc(cx, cy, r * .3, 0, 7); c.fillStyle = COL[got]; c.fill(); } }
-    }
+    // monstruos (objetivos)
+    L.targets.forEach((t, i) => {
+      const got = this.col[t.y * L.w + t.x];
+      let st;
+      if (this.burnT) st = now - this.burnT > BURN_MS ? { mode: 'dead' } : { mode: 'burn', t: this.burnT };
+      else if (got === t.c) st = { mode: 'zap' };
+      else if (got) st = { mode: 'shield', got };
+      else st = { mode: 'idle' };
+      if (st.mode === 'burn' && Math.random() < .5) { const k = (now - this.burnT) / BURN_MS; if (k > .3) this.fire.push({ x: ctr(t.x) + (Math.random() - .5) * cs * .4, y: ctr(t.y) - cs * .1, vx: (Math.random() - .5) * .6, vy: -1 - Math.random() * 1.5, life: .9, r: 2 + Math.random() * 2, kind: Math.random() < .35 ? 'smoke' : 'spark' }); }
+      drawMonster(c, ctr(t.x), ctr(t.y), cs, t, st, now);
+    });
     // explosiones
     if (this.booms.length || this.fire.length) {
       this.booms = this.booms.filter(b => now - b.t < 900);
@@ -795,12 +916,12 @@ function updStat() {
 setInterval(() => { if ($('game').classList.contains('on') && !gb.solved && !gb.failed) updStat(); }, 250);
 
 const TIPS = [
-  [L => true, 'Tocá los <b>espejos</b> para girarlos. Encendé el <b>objetivo</b> ◎ sin tocar la <b>bomba</b> 💣. Ojo: cada giro gasta <b>⚡ energía</b>. ¡Pensá antes de tocar!'],
-  [L => L.pieces.some(p => p.fixed), 'Los espejos grises con tornillos están <b>fijos</b>. Hay <b>varios objetivos</b>: todos tienen que encenderse a la vez.'],
+  [L => true, 'Tocá los <b>espejos</b> para girarlos. Llevá el rayo hasta el <b>monstruo</b> 👾 para electrocutarlo, sin tocar la <b>bomba</b> 💣. Cada monstruo solo cae con <b>su color</b>. Ojo: cada giro gasta <b>⚡ energía</b>. ¡Pensá antes de tocar!'],
+  [L => L.pieces.some(p => p.fixed), 'Los espejos grises con tornillos están <b>fijos</b>. Hay <b>varios monstruos</b>: hay que electrocutarlos a todos a la vez.'],
   [L => L.pieces.some(p => p.t === 's'), 'El <b>divisor</b> (celeste) refleja el rayo y además lo deja pasar: ¡uno se vuelve dos!'],
   [L => !!L.timeLimit, '⚠️ <b>NIVEL JEFE</b>: además de la energía, tenés <b>tiempo limitado</b>. ¡Rápido!'],
   [L => (L.portals || []).length > 0, '🌀 <b>Portales</b>: el rayo que entra en uno sale por el otro del mismo color, en la misma dirección.'],
-  [L => L.emitters.some(e => e.c === 2), 'Ahora hay <b>dos colores</b>. Cada objetivo pide su color exacto. El de dos mitades pide <b>rojo + azul</b> al mismo tiempo.'],
+  [L => L.emitters.some(e => e.c === 2), 'Ahora hay <b>dos colores</b>. Cada monstruo cae solo con su color. El <b>violeta</b> (mitad roja, mitad azul) necesita <b>rojo + azul</b> al mismo tiempo.'],
   [L => L.pieces.some(p => p.g), '🔗 <b>Espejos enlazados</b>: los que tienen el mismo número y color <b>giran juntos</b>. Mover uno mueve al otro.'],
 ];
 const campCache = [];
@@ -842,7 +963,7 @@ function playCamp(n) {
 function onFail(b, why) {
   const n = game.idx;
   modal(`<h2>${why === 'time' ? '⏳ ¡Se acabó el tiempo!' : '⚡ ¡Sin energía!'}</h2>
-    <p>${why === 'time' ? 'El jefe te ganó esta vez.' : 'Gastaste toda la energía sin encender todos los objetivos.'}</p>
+    <p>${why === 'time' ? 'El jefe te ganó esta vez.' : 'Gastaste toda la energía sin electrocutar a todos los monstruos.'}</p>
     <p style="font-size:13px">Tip: mirá bien el recorrido del rayo antes de girar. Hacen falta solo <b>${b.minTaps}</b> giros.</p>
     <div class="btns"><button class="abtn pri" id="mx1">↺ Reintentar</button><button class="abtn" id="mx2">Niveles</button></div>`);
   $('mx1').onclick = () => { closeModal(); playCamp(n); };
@@ -954,7 +1075,7 @@ function openTrapMenu() {
 
 // ----- editor -----
 const ed = { w: 7, h: 7, cells: [], tool: 'M', checked: null };
-const TOOLS = [['M', '╱ Espejo'], ['S', '┆ Divisor'], ['ER', '🔴 Láser'], ['EB', '🔵 Láser'], ['T', '◎ Objetivo'], ['X', '💣 Bomba'], ['W', '▦ Muro'], ['F', '🔩 Fijo'], ['O', '🌀 Portal'], ['K', '🔗 Enlazar'], ['D', '🧽 Borrar']];
+const TOOLS = [['M', '╱ Espejo'], ['S', '┆ Divisor'], ['ER', '🔴 Láser'], ['EB', '🔵 Láser'], ['T', '👾 Monstruo'], ['X', '💣 Bomba'], ['W', '▦ Muro'], ['F', '🔩 Fijo'], ['O', '🌀 Portal'], ['K', '🔗 Enlazar'], ['D', '🧽 Borrar']];
 const eb = new Board($('eCv'), { editor: true, onCell: (x, y) => edCell(x, y) });
 function openEditor() {
   if (!ed.cells.length) edReset(+$('eSize').value);
@@ -999,18 +1120,18 @@ function edCell(x, y) {
 }
 function edInfo() {
   const L = eb.L; if (!L) return;
-  const hints = { M: 'Tocá una casilla para poner un espejo. Tocalo otra vez para girarlo.', S: 'El divisor refleja y deja pasar el rayo. Tocalo de nuevo para girarlo.', ER: 'Láser rojo: tocalo otra vez para cambiar su dirección.', EB: 'Láser azul: tocalo otra vez para cambiar su dirección.', T: 'Objetivo: tocalo de nuevo para cambiar el color (rojo, azul o rojo+azul).', X: 'Bomba: el rayo NO puede tocarla.', O: 'Portal: poné dos del mismo color. Tocalo de nuevo para cambiar de par.', K: 'Tocá espejos para enlazarlos: los del mismo número giran juntos. Tocá de nuevo para cambiar de grupo.', W: 'Muro: bloquea el rayo.', F: 'Espejo fijo: el que juega no lo puede girar.', D: 'Tocá una casilla para borrarla.' };
+  const hints = { M: 'Tocá una casilla para poner un espejo. Tocalo otra vez para girarlo.', S: 'El divisor refleja y deja pasar el rayo. Tocalo de nuevo para girarlo.', ER: 'Láser rojo: tocalo otra vez para cambiar su dirección.', EB: 'Láser azul: tocalo otra vez para cambiar su dirección.', T: 'Monstruo: tocalo de nuevo para cambiar su color (rojo, azul o violeta = rojo+azul).', X: 'Bomba: el rayo NO puede tocarla.', O: 'Portal: poné dos del mismo color. Tocalo de nuevo para cambiar de par.', K: 'Tocá espejos para enlazarlos: los del mismo número giran juntos. Tocá de nuevo para cambiar de grupo.', W: 'Muro: bloquea el rayo.', F: 'Espejo fijo: el que juega no lo puede girar.', D: 'Tocá una casilla para borrarla.' };
   const lit = L.targets.filter(t => eb.col[t.y * L.w + t.x] === t.c).length;
-  $('eInfo').innerHTML = `${hints[ed.tool]}<br><b>Consejo:</b> armá el nivel ya resuelto (todos los objetivos encendidos). Al compartirlo, el juego mezcla los espejos. · Objetivos: <b>${lit}/${L.targets.length}</b>`;
+  $('eInfo').innerHTML = `${hints[ed.tool]}<br><b>Consejo:</b> armá el nivel ya resuelto (todos los monstruos electrocutados). Al compartirlo, el juego mezcla los espejos. · Monstruos: <b>${lit}/${L.targets.length}</b>`;
 }
 function edAnalyze() {
   const L = edLevel();
   if (!L.emitters.length) return { err: 'Poné al menos un láser.' };
-  if (!L.targets.length) return { err: 'Poné al menos un objetivo ◎.' };
+  if (!L.targets.length) return { err: 'Poné al menos un monstruo 👾.' };
   if (!portalsOk(L)) return { err: 'Cada portal necesita su pareja: tiene que haber <b>exactamente dos</b> de cada color.' };
   const { C, sols } = countSolutions(L);
   if (!C.length) return { err: 'Agregá espejos o divisores que se puedan girar.' };
-  if (!sols.length) return { err: 'Esta trampa <b>no tiene solución</b>. Probá con los espejos hasta que todos los objetivos se enciendan a la vez.' };
+  if (!sols.length) return { err: 'Esta trampa <b>no tiene solución</b>. Probá con los espejos hasta que todos los monstruos queden electrocutados a la vez.' };
   // estado inicial: el más lejano a todas las soluciones
   let best = -1, bestS = [];
   for (let s = 0; s < (1 << C.length); s++) { let m = 99; for (const q of sols) m = Math.min(m, popc(s ^ q)); if (m > best) { best = m; bestS = [s]; } else if (m === best) bestS.push(s); }
@@ -1023,7 +1144,7 @@ $('eCheck').onclick = () => {
   const a = edAnalyze();
   if (a.err) { modal(`<h2>Todavía no 🔧</h2><p>${a.err}</p><div class="btns"><button class="abtn" onclick="closeModal()">Seguir editando</button></div>`); return; }
   modal(`<h2>${a.sols === 1 ? '¡Trampa perfecta! 😈' : '¡Tiene solución! ✔'}</h2>
-    <p>${a.sols === 1 ? 'Tiene <b>una sola solución</b>, ideal para un desafío difícil.' : `Tiene <b>${a.sols} soluciones</b>. Para hacerla más difícil, agregá bombas u objetivos que dejen una sola salida.`}</p>
+    <p>${a.sols === 1 ? 'Tiene <b>una sola solución</b>, ideal para un desafío difícil.' : `Tiene <b>${a.sols} soluciones</b>. Para hacerla más difícil, agregá bombas o monstruos que dejen una sola salida.`}</p>
     <p>Dificultad: <span style="color:var(--yel)">${'★'.repeat(a.score)}${'☆'.repeat(5 - a.score)}</span><br>Hacen falta al menos <b>${a.dist}</b> toques para resolverla.</p>
     <div class="btns"><button class="abtn pri" id="mx1">📤 Compartir</button><button class="abtn" id="mx2">▶ Probarla yo</button><button class="abtn" onclick="closeModal()">Seguir editando</button></div>`);
   $('mx1').onclick = () => $('eShare').onclick();
@@ -1107,10 +1228,10 @@ $('mSnd').onclick = () => { muted = !muted; try { localStorage.setItem('prisma_m
 $('mHow').onclick = () => modal(`<h2>Cómo jugar</h2><ul class="how">
   <li>🔦 Los <b>láseres</b> disparan rayos de luz.</li>
   <li>╱ Tocá los <b>espejos</b> para girarlos y desviar el rayo.</li>
-  <li>◎ Encendé <b>todos los objetivos</b> a la vez con el color correcto.</li>
+  <li>👾 Electrocutá <b>a todos los monstruos</b> a la vez, cada uno con <b>su color</b>. Si le llega otro color, se ríe detrás de un escudo.</li>
   <li>💣 El rayo <b>no puede tocar las bombas</b>.</li>
   <li>┆ El <b>divisor</b> parte el rayo en dos.</li>
-  <li>🟣 Rojo + azul en el mismo objetivo = violeta.</li>
+  <li>🟣 El monstruo violeta necesita rojo + azul al mismo tiempo.</li>
   <li>🌀 Los <b>portales</b> teletransportan el rayo al otro del mismo color.</li>
   <li>🔗 Los <b>espejos enlazados</b> (mismo número) giran juntos.</li>
   <li>⚡ En la campaña la <b>energía es limitada</b>: cada giro gasta 1. Los <b>jefes</b> 👹 además tienen reloj.</li>
