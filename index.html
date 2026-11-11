@@ -107,13 +107,14 @@ select{background:#15153a;color:var(--txt);border:1px solid var(--line);border-r
 .tcard .tf{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);margin:10px 2px}
 .tcard .tb{display:flex;gap:7px}.tcard .tb .pri{flex:1}.tcard .tb .abtn{padding:10px 13px}
 /* duelo */
+.dxbtn{padding:9px 14px;border-radius:12px;background:#1d1d48;border:1px solid #3a3a7a;font-weight:800;font-size:14px;color:var(--txt);flex:none}
 #duel{max-width:none}
 .half{flex:1;display:flex;flex-direction:column;position:relative;min-height:0}
 .half.top{transform:rotate(180deg)}
 .dbar{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;font-family:Orbitron;font-weight:600;font-size:14px}
 .p1 .dbar{color:var(--blue)} .p2 .dbar{color:var(--red)}
 .pts{letter-spacing:4px;color:var(--yel)}
-.mid{flex:none;display:flex;align-items:center;justify-content:center;gap:12px;height:40px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#0c0c24;font-size:13px;color:var(--dim)}
+.mid{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;height:54px;padding:0 10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#0c0c24;font-size:13px;color:var(--dim)}
 .dover{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(5,5,18,.75);font-family:Orbitron;font-weight:900;font-size:30px;text-align:center;z-index:5;gap:12px}
 .dover.on{display:flex}
 .dover small{font-family:Inter;font-weight:600;font-size:14px;color:var(--dim)}
@@ -165,7 +166,7 @@ select{background:#15153a;color:var(--txt);border:1px solid var(--line);border-r
 <!-- DUELO -->
 <div id="duel" class="screen">
   <div class="half top p2"><div class="dbar"><span>JUGADOR 2</span><span class="pts" id="dS2"></span></div><div class="stage"><canvas id="dCv2"></canvas></div><div class="dover" id="dO2"></div></div>
-  <div class="mid"><button class="ib" id="dExit" style="width:32px;height:32px;font-size:14px">✕</button><span id="dRound"></span></div>
+  <div class="mid"><button class="dxbtn" id="dExit">← Salir</button><span id="dRound"></span><button class="dxbtn" id="dRestart">↺ Reiniciar</button></div>
   <div class="half p1"><div class="dbar"><span>JUGADOR 1</span><span class="pts" id="dS1"></span></div><div class="stage"><canvas id="dCv1"></canvas></div><div class="dover" id="dO1"></div></div>
 </div>
 
@@ -1209,7 +1210,14 @@ function duelWin(p) {
     document.querySelectorAll('.dex').forEach(b => b.onclick = () => { ov.forEach(o => o.classList.remove('on')); show('menu'); });
   } else setTimeout(() => { ov.forEach(o => o.classList.remove('on')); duelRound(); }, 2200);
 }
-$('dExit').onclick = () => { duel.over = true; ['dO1', 'dO2'].forEach(i => $(i).classList.remove('on')); show('menu'); };
+function duelPause(title, okLabel, onOk) {
+  const was = duel.over; duel.over = true; db1.locked = db2.locked = true;
+  modal(`<h2>${title}</h2><p>Se pierde el resultado de este duelo.</p><div class="btns"><button class="abtn pri" id="mx1">${okLabel}</button><button class="abtn" id="mx2">Seguir jugando</button></div>`);
+  $('mx1').onclick = () => { closeModal(); ['dO1', 'dO2'].forEach(i => $(i).classList.remove('on')); onOk(); };
+  $('mx2').onclick = () => { closeModal(); duel.over = was; if (!was) db1.locked = db2.locked = false; };
+}
+$('dExit').onclick = () => duelPause('¿Salir del duelo?', '← Volver al menú', () => { refreshMenu(); show('menu'); });
+$('dRestart').onclick = () => duelPause('¿Empezar de nuevo?', '↺ Nuevo duelo', () => openDuel());
 
 // ================= menú =================
 function refreshMenu() {
