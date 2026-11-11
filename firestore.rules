@@ -1,0 +1,99 @@
+rules_version = '2';
+// Reglas de seguridad de PRISMA
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signed() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function pairId(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
+    function isFriendship(id) { return exists(/databases/$(db)/documents/friendships/$(id)); }
+    function blockedBy(owner, other) { return exists(/databases/$(db)/documents/users/$(owner)/blocked/$(other)); }
+    function str(v, mn, mx) { return v is string && v.size() >= mn && v.size() <= mx; }
+
+    match /users/{uid} {
+      allow read: if signed();
+      allow create: if signed() && me() == uid
+        && str(request.resource.data.name, 2, 16)
+        && request.resource.data.totalStars == 0;
+      allow update: if signed() && me() == uid
+        && str(request.resource.data.name, 2, 16)
+        && request.resource.data.totalStars is int
+        && request.resource.data.totalStars >= 0 && request.resource.data.totalStars <= 90
+        && request.resource.data.friendCode == resource.data.friendCode;
+      allow delete: if signed() && me() == uid;
+
+      match /blocked/{other} {
+        allow read, write: if signed() && me() == uid;
+      }
+    }
+
+    match /codes/{code} {
+      allow read: if signed();
+      allow create: if signed() && request.resource.data.uid == me() && code.size() == 6;
+      allow delete: if signed() && resource.data.uid == me();
+    }
+
+    // solicitudes de amistad: id = from_to
+    match /requests/{id} {
+      allow read: if signed() && (resource == null || resource.data.from == me() || resource.data.to == me());
+      allow create: if signed()
+        && request.resource.data.from == me()
+        && request.resource.data.to != me()
+        && id == me() + '_' + request.resource.data.to
+        && str(request.resource.data.fromName, 2, 16)
+        && !blockedBy(request.resource.data.to, me());
+      allow delete: if signed() && (resource.data.from == me() || resource.data.to == me());
+    }
+
+    // amistades: solo se crean aceptando una solicitud que el otro mandó
+    match /friendships/{id} {
+      allow read: if signed() && (resource == null || me() in resource.data.members);
+      allow create: if signed()
+        && request.resource.data.members.size() == 2
+        && me() in request.resource.data.members
+        && id == pairId(request.resource.data.members[0], request.resource.data.members[1])
+        && exists(/databases/$(db)/documents/requests/$((request.resource.data.members[0] == me() ? request.resource.data.members[1] : request.resource.data.members[0]) + '_' + me()));
+      allow delete: if signed() && me() in resource.data.members;
+    }
+
+    // chat: solo entre amigos, sin editar ni borrar
+    match /chats/{id}/msgs/{mid} {
+      allow read: if signed() && me() in id.split('_') && isFriendship(id);
+      allow create: if signed()
+        && me() in id.split('_')
+        && isFriendship(id)
+        && request.resource.data.from == me()
+        && str(request.resource.data.text, 1, 200)
+        && request.resource.data.at == request.time
+        && !blockedBy(id.split('_')[0] == me() ? id.split('_')[1] : id.split('_')[0], me());
+    }
+
+    match /reports/{rid} {
+      allow create: if signed() && request.resource.data.by == me() && str(request.resource.data.text, 0, 300);
+    }
+
+    // desafío diario: cuenta solo el primer resultado
+    match /daily/{date}/scores/{uid} {
+      allow read: if signed();
+      allow create: if signed() && me() == uid
+        && request.resource.data.taps is int && request.resource.data.taps > 0 && request.resource.data.taps < 200
+        && request.resource.data.time is int && request.resource.data.time >= 0
+        && str(request.resource.data.name, 2, 16);
+    }
+
+    match /traps/{tid} {
+      allow read: if signed();
+      allow create: if signed() && request.resource.data.author == me()
+        && str(request.resource.data.code, 4, 400) && str(request.resource.data.title, 1, 40);
+      allow delete: if signed() && resource.data.author == me();
+
+      match /solves/{uid} {
+        allow read: if signed();
+        allow create: if signed() && me() == uid;
+      }
+      match /likes/{uid} {
+        allow read: if signed();
+        allow create, delete: if signed() && me() == uid;
+      }
+    }
+  }
+}

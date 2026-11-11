@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>PRISMA · puzzles de luz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#07071a;--panel:#12122e;--line:#2a2a55;--txt:#e9e9ff;--dim:#8c8cc0;--red:#ff3b6b;--blue:#2fa8ff;--pur:#b34dff;--yel:#ffd23f;--ok:#3dffb0}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:Inter,system-ui,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none}
+body{background:radial-gradient(ellipse at 50% -10%,#1e1050 0%,var(--bg) 60%) fixed}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+.screen{position:absolute;inset:0;display:none;flex-direction:column;max-width:560px;margin:0 auto}
+.screen.on{display:flex}
+/* menú */
+#menu{justify-content:center;align-items:center;padding:24px;gap:10px}
+.logo{font-family:Orbitron;font-weight:900;font-size:56px;letter-spacing:6px;background:linear-gradient(90deg,var(--red),var(--pur),var(--blue));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 18px rgba(179,77,255,.55));margin:0}
+.sub{color:var(--dim);letter-spacing:3px;text-transform:uppercase;font-size:12px;margin:-4px 0 18px}
+.mbtn{width:100%;max-width:340px;display:flex;align-items:center;gap:14px;padding:15px 18px;border-radius:16px;background:linear-gradient(180deg,#1a1a40,#121232);border:1px solid var(--line);font-weight:800;font-size:17px;text-align:left;transition:transform .08s}
+.mbtn:active{transform:scale(.97)}
+.mbtn .ic{font-size:24px;width:30px;text-align:center}
+.mbtn small{display:block;font-weight:400;color:var(--dim);font-size:12px;margin-top:2px}
+.mbtn.hot{border-color:#5b2a9a;box-shadow:0 0 22px rgba(179,77,255,.25)}
+.row{display:flex;gap:10px;width:100%;max-width:340px}
+.sbtn{flex:1;padding:11px;border-radius:12px;background:#15153a;border:1px solid var(--line);font-weight:600;font-size:14px}
+/* barras */
+.bar{display:flex;align-items:center;gap:10px;padding:12px 14px;min-height:56px}
+.bar .ttl{flex:1;font-family:Orbitron;font-weight:600;font-size:16px;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{width:40px;height:40px;border-radius:12px;background:#15153a;border:1px solid var(--line);font-size:18px;flex:none}
+.stat{font-size:13px;color:var(--dim);text-align:right;line-height:1.3;font-variant-numeric:tabular-nums}
+.stat b{color:var(--txt);font-size:15px}
+.bottom{justify-content:center;padding-bottom:18px}
+.abtn{padding:12px 18px;border-radius:14px;background:#17173d;border:1px solid var(--line);font-weight:800;font-size:15px}
+.abtn.pri{background:linear-gradient(90deg,#7a2cff,#2f7bff);border:0;box-shadow:0 0 18px rgba(122,44,255,.4)}
+.abtn:disabled{opacity:.4}
+.tip{margin:0 14px;padding:10px 14px;border-radius:12px;background:rgba(255,210,63,.08);border:1px solid rgba(255,210,63,.25);color:#ffe7a0;font-size:14px;line-height:1.35;display:none}
+.tip.on{display:block}
+.stage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;padding:8px;position:relative}
+canvas{display:block;touch-action:none}
+/* niveles */
+.lgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:10px 16px 24px;overflow:auto}
+.lv{aspect-ratio:1;border-radius:14px;background:#15153a;border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Orbitron;font-weight:900;font-size:18px}
+.lv span{font-family:Inter;font-size:10px;letter-spacing:1px;color:var(--yel);margin-top:3px;min-height:12px}
+.lv.lock{opacity:.35}
+.lv.boss{border-color:#a8204a;background:linear-gradient(180deg,#3a1030,#1a0c26);box-shadow:0 0 14px rgba(255,59,107,.25)}
+.whead{grid-column:1/-1;font-family:Orbitron;font-weight:600;font-size:13px;letter-spacing:2px;color:var(--dim);margin:10px 0 0;text-transform:uppercase}
+.rank{font-size:13px;color:#cfcfff;background:#14143a;border:1px solid var(--line);padding:7px 14px;border-radius:999px;margin:-8px 0 12px}
+.lv.done{border-color:#3a3a80}
+/* modal */
+#modal{position:fixed;inset:0;background:rgba(3,3,12,.72);display:none;align-items:center;justify-content:center;padding:20px;z-index:20;backdrop-filter:blur(4px)}
+#modal.on{display:flex}
+.card{width:100%;max-width:380px;background:linear-gradient(180deg,#1a1a44,#10102a);border:1px solid #3a3a7a;border-radius:22px;padding:22px;text-align:center;box-shadow:0 0 40px rgba(122,44,255,.3);max-height:90vh;overflow:auto}
+.card h2{font-family:Orbitron;margin:0 0 8px;font-size:22px}
+.card p{color:#c8c8f0;line-height:1.45;font-size:15px;margin:8px 0}
+.card .btns{display:flex;flex-direction:column;gap:9px;margin-top:16px}
+.stars{font-size:38px;letter-spacing:6px;margin:6px 0;color:var(--yel);text-shadow:0 0 14px rgba(255,210,63,.6)}
+.stars i{font-style:normal;color:#33335a;text-shadow:none}
+.code{font-family:ui-monospace,Menlo,monospace;background:#0a0a20;border:1px dashed #4a4a90;border-radius:10px;padding:10px;word-break:break-all;font-size:14px;color:#cfe;user-select:text;-webkit-user-select:text}
+textarea,input[type=text]{width:100%;background:#0a0a20;border:1px solid #3a3a7a;border-radius:10px;color:var(--txt);padding:10px;font:14px ui-monospace,Menlo,monospace;user-select:text;-webkit-user-select:text}
+a.abtn{text-decoration:none;display:block}
+.how{text-align:left}
+.how li{margin:6px 0;color:#c8c8f0;line-height:1.4}
+/* editor */
+.tools{display:flex;gap:7px;overflow-x:auto;padding:4px 14px 8px;flex:none;scrollbar-width:none}
+.tools::-webkit-scrollbar{display:none}
+.tool{flex:none;padding:9px 11px;border-radius:12px;background:#15153a;border:1px solid var(--line);font-size:13px;font-weight:600;white-space:nowrap}
+.tool.on{border-color:var(--yel);box-shadow:0 0 12px rgba(255,210,63,.35);background:#232048}
+.einfo{margin:0 14px;font-size:13px;color:var(--dim);min-height:36px;line-height:1.35}
+.einfo b{color:var(--txt)}
+select{background:#15153a;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit}
+/* online */
+.uchip{position:absolute;top:14px;right:14px;display:flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;border-radius:999px;background:#15153a;border:1px solid var(--line);font-weight:600;font-size:14px;max-width:60%}
+.uchip span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uchip:not(:has(.av)){padding:9px 14px}
+.av{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;flex:none;box-shadow:inset 0 -3px 0 rgba(0,0,0,.25)}
+.sbtn.big{padding:13px;font-size:15px;font-weight:800}
+.scroll{flex:1;overflow:auto;padding:4px 16px 24px;min-height:0}
+.lbl{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin:16px 0 6px}
+.pick{display:flex;flex-wrap:wrap;gap:7px}
+.pick button{width:42px;height:42px;border-radius:12px;background:#15153a;border:2px solid transparent;font-size:22px}
+.pick button.on{border-color:var(--yel)}
+.statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}
+.statgrid div{background:#15153a;border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+.statgrid b{display:block;font-size:20px}.statgrid span{font-size:12px;color:var(--dim)}
+.urow{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:14px;background:#13133a;border:1px solid var(--line);margin-bottom:7px}
+.urow.mine{border-color:var(--yel);background:#24204a}
+.urow .un{flex:1;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.urow .un small{display:block;font-weight:400;color:var(--dim);font-size:12px}
+.urow .pos{width:26px;text-align:center;font-weight:800;color:var(--dim)}
+.urow .val{font-size:14px;white-space:nowrap}
+.urow .sbtn{flex:none;padding:8px 11px}
+.sbtn.ok{background:#14503a;border-color:#2a8a5a}
+.tabs{display:flex;gap:6px;padding:0 16px 10px}
+.tabs button{flex:1;padding:10px 6px;border-radius:12px;background:#15153a;border:1px solid var(--line);font-weight:700;font-size:13px}
+.tabs button.on{border-color:var(--yel);background:#232048}
+.muted{color:var(--dim);text-align:center;padding:24px 10px;line-height:1.4}
+.chhead{display:flex;align-items:center;gap:10px;font-family:Inter;font-weight:800}
+.msgs{flex:1;overflow:auto;padding:8px 14px;display:flex;flex-direction:column;gap:6px;min-height:0}
+.msg{align-self:flex-start;max-width:78%;background:#1d1d48;border:1px solid var(--line);padding:9px 12px;border-radius:16px 16px 16px 4px;font-size:15px;line-height:1.35;word-wrap:break-word;position:relative;user-select:text;-webkit-user-select:text}
+.msg.me{align-self:flex-end;background:linear-gradient(90deg,#5a22d0,#2b63e0);border:0;border-radius:16px 16px 4px 16px}
+.msg .rep{background:none;color:var(--dim);font-size:11px;margin-left:8px;padding:0}
+.safety{font-size:12px;color:#ffe7a0;background:rgba(255,210,63,.07);border:1px solid rgba(255,210,63,.2);border-radius:10px;padding:8px 10px;text-align:center;margin:0 0 6px}
+.tcard{background:#13133a;border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:10px}
+.tcard .th{display:flex;gap:10px;align-items:center}.tcard .un{flex:1;font-weight:800;text-align:left}.tcard .un small{display:block;font-weight:400;color:var(--dim);font-size:12px}
+.tcard .tf{display:flex;justify-content:space-between;font-size:12px;color:var(--dim);margin:10px 2px}
+.tcard .tb{display:flex;gap:7px}.tcard .tb .pri{flex:1}.tcard .tb .abtn{padding:10px 13px}
+/* duelo */
+#duel{max-width:none}
+.half{flex:1;display:flex;flex-direction:column;position:relative;min-height:0}
+.half.top{transform:rotate(180deg)}
+.dbar{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;font-family:Orbitron;font-weight:600;font-size:14px}
+.p1 .dbar{color:var(--blue)} .p2 .dbar{color:var(--red)}
+.pts{letter-spacing:4px;color:var(--yel)}
+.mid{flex:none;display:flex;align-items:center;justify-content:center;gap:12px;height:40px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#0c0c24;font-size:13px;color:var(--dim)}
+.dover{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(5,5,18,.75);font-family:Orbitron;font-weight:900;font-size:30px;text-align:center;z-index:5;gap:12px}
+.dover.on{display:flex}
+.dover small{font-family:Inter;font-weight:600;font-size:14px;color:var(--dim)}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#232350;border:1px solid #4a4a90;padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;text-align:center}
+.toast.on{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- MENÚ -->
+<div id="menu" class="screen on">
+  <button id="mUser" class="uchip"></button>
+  <h1 class="logo">PRISMA</h1>
+  <div class="sub">puzzles de luz</div>
+  <div class="rank" id="mRank"></div>
+  <button class="mbtn hot" id="mCamp"><span class="ic">🔦</span><div>Campaña<small id="mCampSub">30 niveles</small></div></button>
+  <button class="mbtn" id="mDaily"><span class="ic">📅</span><div>Desafío del día<small id="mDailySub">El mismo puzzle para todos</small></div></button>
+  <button class="mbtn" id="mTrap"><span class="ic">😈</span><div>Modo Trampa<small>Armá un nivel y desafiá a tus amigos</small></div></button>
+  <button class="mbtn" id="mDuel"><span class="ic">⚔️</span><div>Duelo<small>2 jugadores en el mismo celu</small></div></button>
+  <div class="row"><button class="sbtn big" id="mRanks">🏆 Rankings</button><button class="sbtn big" id="mFriends">👥 Amigos</button></div>
+  <div class="row"><button class="sbtn" id="mHow">❓ Cómo jugar</button><button class="sbtn" id="mSnd">🔊 Sonido</button></div>
+</div>
+
+<!-- NIVELES -->
+<div id="levels" class="screen">
+  <div class="bar"><button class="ib back">←</button><div class="ttl">Campaña</div><div class="stat" id="lStars"></div></div>
+  <div class="lgrid" id="lGrid"></div>
+  <div style="padding:0 16px 20px;display:flex;justify-content:center"><button class="sbtn" id="lUnlock" style="flex:none;padding:11px 16px"></button></div>
+</div>
+
+<!-- JUEGO -->
+<div id="game" class="screen">
+  <div class="bar"><button class="ib back" id="gBack">←</button><div class="ttl" id="gTitle"></div><div class="stat" id="gStat"></div></div>
+  <div class="tip" id="gTip"></div>
+  <div class="stage"><canvas id="gCv"></canvas></div>
+  <div class="bar bottom"><button class="abtn" id="gReset">↺ Reiniciar</button><button class="abtn" id="gHint">💡 Pista</button></div>
+</div>
+
+<!-- EDITOR -->
+<div id="editor" class="screen">
+  <div class="bar"><button class="ib back">←</button><div class="ttl">Crear trampa</div>
+    <select id="eSize"><option value="6">6×6</option><option value="7" selected>7×7</option><option value="8">8×8</option></select></div>
+  <div class="tools" id="eTools"></div>
+  <div class="einfo" id="eInfo"></div>
+  <div class="stage"><canvas id="eCv"></canvas></div>
+  <div class="bar bottom"><button class="abtn" id="eClear">🗑️</button><button class="abtn" id="eCheck">✔ Verificar</button><button class="abtn pri" id="eShare">📤 Compartir</button></div>
+</div>
+
+<!-- DUELO -->
+<div id="duel" class="screen">
+  <div class="half top p2"><div class="dbar"><span>JUGADOR 2</span><span class="pts" id="dS2"></span></div><div class="stage"><canvas id="dCv2"></canvas></div><div class="dover" id="dO2"></div></div>
+  <div class="mid"><button class="ib" id="dExit" style="width:32px;height:32px;font-size:14px">✕</button><span id="dRound"></span></div>
+  <div class="half p1"><div class="dbar"><span>JUGADOR 1</span><span class="pts" id="dS1"></span></div><div class="stage"><canvas id="dCv1"></canvas></div><div class="dover" id="dO1"></div></div>
+</div>
+
+<!-- PERFIL -->
+<div id="profile" class="screen"><div class="bar"><button class="ib back2">←</button><div class="ttl">Mi perfil</div></div><div class="scroll" id="pBody"></div></div>
+<!-- RANKINGS -->
+<div id="ranks" class="screen"><div class="bar"><button class="ib back2">←</button><div class="ttl">Rankings</div></div>
+  <div class="tabs" id="rkTabs"><button data-t="global">🌎 Mundial</button><button data-t="daily">📅 Hoy</button><button data-t="friends">👥 Amigos</button></div>
+  <div class="scroll" id="rkList"></div></div>
+<!-- AMIGOS -->
+<div id="friends" class="screen"><div class="bar"><button class="ib back2">←</button><div class="ttl">Amigos</div></div>
+  <div class="scroll">
+    <div class="lbl">Tu código de amigo</div>
+    <div class="row" style="max-width:none"><div class="code" id="frCode" style="flex:1;text-align:center;font-size:22px;letter-spacing:4px"></div><button class="sbtn" style="flex:none" id="frCopy">📋</button><a class="sbtn" style="flex:none;text-decoration:none" id="frWa" target="_blank" rel="noopener">WhatsApp</a></div>
+    <div class="lbl">Agregar amigo</div>
+    <div class="row" style="max-width:none"><input type="text" id="frInput" maxlength="6" placeholder="Código de 6 letras" style="text-transform:uppercase"><button class="abtn pri" id="frAdd" style="flex:none">Agregar</button></div>
+    <div id="frReqs"></div><div class="lbl">Mis amigos</div><div id="frList"></div>
+  </div></div>
+<!-- CHAT -->
+<div id="chat" class="screen"><div class="bar"><button class="ib" id="chBack">←</button><div class="ttl chhead" id="chHead"></div><button class="ib" id="chMore">⋯</button></div>
+  <div class="msgs" id="chMsgs"></div>
+  <div class="tools" id="chQuick"></div>
+  <div class="row" style="max-width:none;padding:0 12px 14px"><input type="text" id="chInput" maxlength="200" placeholder="Escribí un mensaje…"><button class="abtn pri" id="chSend" style="flex:none">➤</button></div></div>
+<!-- TRAMPAS COMUNIDAD -->
+<div id="feed" class="screen"><div class="bar"><button class="ib back2">←</button><div class="ttl">Trampas de la comunidad</div></div>
+  <div class="tabs" id="fdTabs"><button data-t="new">🆕 Nuevas</button><button data-t="mine">😈 Mis trampas</button></div>
+  <div class="scroll" id="fdList"></div></div>
+
+<div id="modal"><div class="card" id="mCard"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="firebase-config.js"></script>
+<script src="online.js"></script>
+<script>
+// ================= Motor PRISMA =================
+const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
+const REF = [[3, 2, 1, 0], [1, 0, 3, 2]]; // REF[o][d]: o=0 '/', o=1 '\'
+
+function buildGrid(L) {
+  const g = new Array(L.w * L.h).fill(null);
+  for (const [x, y] of L.walls) g[y * L.w + x] = { k: 'W' };
+  for (const [x, y] of L.bombs) g[y * L.w + x] = { k: 'B' };
+  L.emitters.forEach((e, i) => g[e.y * L.w + e.x] = { k: 'E', i });
+  L.targets.forEach((t, i) => g[t.y * L.w + t.x] = { k: 'T', i });
+  L.pieces.forEach((p, i) => g[p.y * L.w + p.x] = { k: 'P', i });
+  const ps = L.portals || [];
+  ps.forEach((p, i) => {
+    const m = ps.find((q, j) => j !== i && q.p === p.p);
+    g[p.y * L.w + p.x] = { k: 'O', i, mx: m ? m.x : -1, my: m ? m.y : -1 };
+  });
+  return g;
+}
+
+function trace(L, grid, orient, wantSegs) {
+  const W = L.w, H = L.h;
+  const col = new Uint8Array(W * H);
+  const seen = new Set();
+  const segs = wantSegs ? [] : null;
+  const stack = [];
+  for (const e of L.emitters) stack.push([e.x, e.y, e.d, e.c]);
+  let guard = 0;
+  while (stack.length && guard++ < 5000) {
+    let [x, y, d, c] = stack.pop();
+    const sx = x, sy = y;
+    while (true) {
+      const nx = x + DX[d], ny = y + DY[d];
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H) {
+        if (segs) segs.push([sx, sy, x + DX[d] * 0.5, y + DY[d] * 0.5, c]);
+        break;
+      }
+      const cell = grid[ny * W + nx];
+      const key = ((ny * W + nx) * 4 + d) * 4 + c;
+      if (seen.has(key)) { if (segs) segs.push([sx, sy, nx, ny, c]); break; }
+      seen.add(key);
+      x = nx; y = ny;
+      if (!cell || cell.k === 'T') { col[y * W + x] |= c; continue; }
+      if (cell.k === 'W' || cell.k === 'E') {
+        if (segs) segs.push([sx, sy, x - DX[d] * 0.5, y - DY[d] * 0.5, c]);
+        break;
+      }
+      if (cell.k === 'B') { col[y * W + x] |= c; if (segs) segs.push([sx, sy, x, y, c]); break; }
+      if (cell.k === 'O') {
+        col[y * W + x] |= c; if (segs) segs.push([sx, sy, x, y, c]);
+        if (cell.mx >= 0) { col[cell.my * W + cell.mx] |= c; stack.push([cell.mx, cell.my, d, c]); }
+        break;
+      }
+      if (cell.k === 'P') {
+        col[y * W + x] |= c;
+        const p = L.pieces[cell.i], o = orient[cell.i];
+        if (segs) segs.push([sx, sy, x, y, c]);
+        stack.push([x, y, REF[o][d], c]);
+        if (p.t === 's') stack.push([x, y, d, c]);
+        break;
+      }
+    }
+  }
+  return { col, segs };
+}
+
+function isSolved(L, col) {
+  for (const t of L.targets) if (col[t.y * L.w + t.x] !== t.c) return false;
+  for (const [x, y] of L.bombs) if (col[y * L.w + x]) return false;
+  return true;
+}
+
+// controles: cada pieza giratoria suelta es un control; las enlazadas (mismo g) comparten uno
+function controls(L) {
+  const C = [], byG = {};
+  L.pieces.forEach((p, i) => {
+    if (p.fixed) return;
+    if (p.g) { if (byG[p.g] === undefined) { byG[p.g] = C.length; C.push([]); } C[byG[p.g]].push(i); }
+    else C.push([i]);
+  });
+  return C;
+}
+
+// estados relativos a las orientaciones actuales de L.pieces
+function enumerate(L, grid) {
+  const C = controls(L), k = C.length, n = 1 << k, out = new Array(n);
+  const base = L.pieces.map(p => p.o);
+  for (let s = 0; s < n; s++) {
+    const o = base.slice();
+    for (let j = 0; j < k; j++) if ((s >> j) & 1) for (const m of C[j]) o[m] ^= 1;
+    out[s] = trace(L, grid, o, false).col;
+  }
+  return { C, out };
+}
+
+function countSolutions(L) {
+  const grid = buildGrid(L);
+  const { C, out } = enumerate(L, grid);
+  const sols = [];
+  for (let s = 0; s < out.length; s++) if (isSolved(L, out[s])) sols.push(s);
+  return { C, sols, out };
+}
+
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+function generate(seed, P) {
+  const rnd = mulberry32(seed);
+  const ri = n => Math.floor(rnd() * n);
+  for (let att = 0; att < 500; att++) {
+    const w = P.w, h = P.h, id = (x, y) => y * w + x;
+    const L = { w, h, walls: [], bombs: [], emitters: [], targets: [], pieces: [], portals: [] };
+    const used = new Set(), reserve = new Set();
+    const free = (x, y) => !used.has(id(x, y)) && !reserve.has(id(x, y));
+    const cols = P.colors === 2 ? [1, 2] : [1];
+    if (P.extraEmit) cols.push(1 + ri(P.colors));
+    let ok = true;
+    for (const c of cols) {
+      let placed = false;
+      for (let t = 0; t < 60 && !placed; t++) {
+        const side = ri(4); let x, y, d;
+        if (side === 0) { x = 0; y = 1 + ri(h - 2); d = 0; }
+        else if (side === 1) { x = w - 1; y = 1 + ri(h - 2); d = 2; }
+        else if (side === 2) { y = 0; x = 1 + ri(w - 2); d = 1; }
+        else { y = h - 1; x = 1 + ri(w - 2); d = 3; }
+        if (free(x, y) && free(x + DX[d], y + DY[d])) { used.add(id(x, y)); reserve.add(id(x + DX[d], y + DY[d])); L.emitters.push({ x, y, d, c }); placed = true; }
+      }
+      if (!placed) ok = false;
+    }
+    if (!ok) continue;
+    const randCell = inner => { for (let t = 0; t < 100; t++) { const x = inner ? 1 + ri(w - 2) : ri(w), y = inner ? 1 + ri(h - 2) : ri(h); if (free(x, y)) return [x, y]; } return null; };
+    const addPiece = (t, fixed) => { const c = randCell(rnd() < 0.8); if (!c) return; used.add(id(c[0], c[1])); L.pieces.push({ x: c[0], y: c[1], t, o: ri(2), fixed, g: 0 }); };
+    for (let i = 0; i < P.rot; i++) addPiece('m', false);
+    for (let i = 0; i < (P.split || 0); i++) addPiece('s', false);
+    for (let i = 0; i < (P.fixed || 0); i++) addPiece('m', true);
+    for (let i = 0; i < (P.portals || 0); i++) for (let k = 0; k < 2; k++) { const c = randCell(true); if (c) { used.add(id(c[0], c[1])); L.portals.push({ x: c[0], y: c[1], p: i + 1 }); } }
+    if (L.portals.length % 2) continue;
+    for (let i = 0; i < (P.walls || 0); i++) { const c = randCell(false); if (c) { used.add(id(c[0], c[1])); L.walls.push(c); } }
+    let grid = buildGrid(L);
+    let tr = trace(L, grid, L.pieces.map(p => p.o), false).col;
+    L.pieces = L.pieces.filter(p => tr[id(p.x, p.y)] > 0);
+    const usedPairs = new Set(L.portals.filter(p => tr[id(p.x, p.y)] > 0).map(p => p.p));
+    L.portals = L.portals.filter(p => usedPairs.has(p.p));
+    if ((P.portals || 0) > 0 && usedPairs.size < 1) continue;
+    const rotPieces = L.pieces.map((p, i) => i).filter(i => !L.pieces[i].fixed);
+    if (rotPieces.length < Math.ceil((P.rot + (P.split || 0)) * 0.75) || rotPieces.length < 2) continue;
+    if (P.colors === 2 && !L.pieces.some(p => tr[id(p.x, p.y)] === 3) && rnd() < 0.7) continue;
+    // enlaces
+    if (P.links) {
+      const pool = rotPieces.slice(); for (let i = pool.length - 1; i > 0; i--) { const j = ri(i + 1); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+      for (let g = 1; g <= P.links && pool.length >= 2; g++) { L.pieces[pool.pop()].g = g; L.pieces[pool.pop()].g = g; }
+    }
+    grid = buildGrid(L);
+    const { C, out } = enumerate(L, grid); // estado 0 = solución
+    const solCol = out[0];
+    const cand = [];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      if (grid[id(x, y)]) continue;
+      const v = solCol[id(x, y)];
+      cand.push(v ? { t: 'T', x, y, c: v } : { t: 'B', x, y });
+    }
+    let alive = []; for (let s = 0; s < out.length; s++) alive.push(s);
+    const kills = (cd, s) => cd.t === 'T' ? out[s][id(cd.x, cd.y)] !== cd.c : out[s][id(cd.x, cd.y)] !== 0;
+    const chosen = []; let nT = 0, nB = 0;
+    while (alive.length > 1) {
+      let best = null, bestK = 0;
+      for (const cd of cand) {
+        if (chosen.includes(cd)) continue;
+        if (cd.t === 'T' && nT >= P.maxT) continue;
+        if (cd.t === 'B' && nB >= P.maxB) continue;
+        let k = 0; for (const s of alive) if (kills(cd, s)) k++;
+        const sc = k * (cd.t === 'T' ? 1 : 0.9) * (0.75 + rnd() * 0.5) + (cd.t === 'T' && cd.c === 3 ? 2 : 0);
+        if (k > 0 && sc > bestK) { bestK = sc; best = cd; }
+      }
+      if (!best) break;
+      chosen.push(best); if (best.t === 'T') nT++; else nB++;
+      alive = alive.filter(s => !kills(best, s));
+    }
+    if (alive.length !== 1 || nT < 1) continue;
+    for (const cd of chosen) { if (cd.t === 'T') L.targets.push({ x: cd.x, y: cd.y, c: cd.c }); else L.bombs.push([cd.x, cd.y]); }
+    for (let i = 0; i < (P.decoB || 0); i++) {
+      const bc = cand.filter(cd => cd.t === 'B' && !chosen.includes(cd) && [0, 1, 2, 3].some(d => { const xx = cd.x + DX[d], yy = cd.y + DY[d]; return xx >= 0 && yy >= 0 && xx < w && yy < h && solCol[id(xx, yy)]; }));
+      if (!bc.length) break; const b = bc[ri(bc.length)]; chosen.push(b); L.bombs.push([b.x, b.y]);
+    }
+    const k = C.length, flips = Math.max(P.minTaps || 2, Math.round(k * 0.7));
+    if (flips > k) continue;
+    const idx = C.map((_, j) => j); for (let i = idx.length - 1; i > 0; i--) { const j = ri(i + 1); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+    for (let i = 0; i < flips; i++) for (const m of C[idx[i]]) L.pieces[m].o ^= 1;
+    L.minTaps = flips; L.seed = seed;
+    return L;
+  }
+  return null;
+}
+
+const TIERS = {
+  t0: { w: 5, h: 5, rot: 3, maxT: 1, maxB: 1, colors: 1, decoB: 1, minTaps: 2 },
+  t1: { w: 6, h: 6, rot: 4, fixed: 1, maxT: 2, maxB: 2, colors: 1, walls: 1, decoB: 1, minTaps: 3 },
+  t2: { w: 6, h: 6, rot: 5, split: 1, fixed: 1, maxT: 2, maxB: 2, colors: 1, walls: 2, decoB: 1, minTaps: 3 },
+  t3: { w: 6, h: 7, rot: 6, split: 1, fixed: 1, maxT: 3, maxB: 3, colors: 1, walls: 2, decoB: 2, minTaps: 4 },
+  b1: { w: 7, h: 7, rot: 7, split: 2, fixed: 1, maxT: 3, maxB: 3, colors: 1, walls: 2, decoB: 2, minTaps: 5 },
+  t4: { w: 6, h: 7, rot: 5, split: 1, portals: 1, maxT: 2, maxB: 2, colors: 1, walls: 2, decoB: 1, minTaps: 4 },
+  t5: { w: 7, h: 7, rot: 6, split: 1, portals: 1, fixed: 1, maxT: 3, maxB: 3, colors: 1, walls: 2, decoB: 2, minTaps: 4 },
+  t6: { w: 7, h: 7, rot: 6, split: 1, portals: 1, maxT: 3, maxB: 3, colors: 2, walls: 2, decoB: 1, minTaps: 5 },
+  t7: { w: 7, h: 8, rot: 7, split: 2, portals: 1, fixed: 1, maxT: 4, maxB: 3, colors: 2, walls: 3, decoB: 2, minTaps: 5 },
+  b2: { w: 8, h: 8, rot: 8, split: 2, portals: 2, fixed: 1, maxT: 4, maxB: 4, colors: 2, walls: 3, decoB: 2, minTaps: 6 },
+  t8: { w: 7, h: 7, rot: 8, split: 1, portals: 1, links: 2, maxT: 3, maxB: 3, colors: 1, walls: 2, decoB: 2, minTaps: 4 },
+  t9: { w: 7, h: 8, rot: 9, split: 1, portals: 1, links: 2, fixed: 1, maxT: 4, maxB: 3, colors: 2, walls: 2, decoB: 2, minTaps: 5 },
+  t10: { w: 8, h: 8, rot: 10, split: 2, portals: 1, links: 3, fixed: 1, maxT: 4, maxB: 4, colors: 2, extraEmit: true, walls: 3, decoB: 2, minTaps: 6 },
+  b3: { w: 8, h: 8, rot: 12, split: 2, portals: 2, links: 3, fixed: 1, maxT: 4, maxB: 4, colors: 2, extraEmit: true, walls: 3, decoB: 2, minTaps: 7 },
+};
+const CAMPAIGN = ['t0', 't1', 't1', 't2', 't2', 't3', 't3', 't3', 't3', 'b1',
+  't4', 't4', 't5', 't5', 't6', 't6', 't7', 't7', 't7', 'b2',
+  't8', 't8', 't9', 't9', 't9', 't10', 't10', 't10', 't10', 'b3'];
+const WORLDS = [{ name: 'Mundo 1 · Neón', slack: 5, boss: 90 }, { name: 'Mundo 2 · Portales', slack: 4, boss: 120 }, { name: 'Mundo 3 · Enlaces', slack: 3, boss: 150 }];
+function campaignLevel(n) {
+  const P = TIERS[CAMPAIGN[n]];
+  for (let s = 0; s < 60; s++) {
+    const L = generate(1000 * (n + 1) + s * 7919 + 23, P);
+    if (L) { const W = WORLDS[Math.floor(n / 10)]; L.limit = L.minTaps + W.slack; if (n % 10 === 9) L.timeLimit = W.boss; return L; }
+  }
+  return null;
+}
+function dailyLevel(dateNum) {
+  const P = TIERS[['t6', 't7', 't9', 't10'][dateNum % 4]];
+  for (let s = 0; s < 60; s++) { const L = generate(dateNum * 31 + s * 104729, P); if (L) return L; }
+}
+
+if (typeof module !== 'undefined') module.exports = { DX, DY, REF, buildGrid, trace, isSolved, controls, enumerate, countSolutions, mulberry32, generate, TIERS, CAMPAIGN, WORLDS, campaignLevel, dailyLevel };
+
+</script>
+<script>
+// ================= utilidades =================
+const $ = id => document.getElementById(id);
+const COL = { 1: '#ff3b6b', 2: '#2fa8ff', 3: '#b34dff' };
+const PCOL = ['#ff9f1c', '#3dffb0', '#ff6bd6', '#fff36b'];
+const LCOL = ['#ffd23f', '#3dffb0', '#ff9f1c', '#ff6bd6'];
+const clone = o => JSON.parse(JSON.stringify(o));
+const fmt = ms => { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+let store = { stars: [], daily: {}, hintsUsed: 0 };
+try { const s = JSON.parse(localStorage.getItem('prisma_v1')); if (s) store = Object.assign(store, s); } catch (e) { }
+function save() { try { localStorage.setItem('prisma_v1', JSON.stringify(store)); } catch (e) { } }
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 2200); }
+function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)); requestAnimationFrame(() => boards.forEach(b => b.resize())); }
+function modal(html) { $('mCard').innerHTML = html; $('modal').classList.add('on'); }
+function closeModal() { $('modal').classList.remove('on'); }
+function copyText(t, btn) {
+  const done = () => { if (btn) { const o = btn.textContent; btn.textContent = '¡Copiado! ✓'; setTimeout(() => btn.textContent = o, 1500); } };
+  try { navigator.clipboard.writeText(t).then(done, () => fallback()); } catch (e) { fallback(); }
+  function fallback() { const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('Mantené apretado el texto para copiarlo'); } ta.remove(); }
+}
+const wa = t => 'https://wa.me/?text=' + encodeURIComponent(t);
+
+// ================= sonido =================
+let AC = null, muted = false;
+try { muted = localStorage.getItem('prisma_mute') === '1'; } catch (e) { }
+function tone(f, t0, dur, type = 'sine', vol = .12, f2) {
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, AC.currentTime + t0);
+  if (f2) o.frequency.exponentialRampToValueAtTime(f2, AC.currentTime + t0 + dur);
+  g.gain.setValueAtTime(vol, AC.currentTime + t0); g.gain.exponentialRampToValueAtTime(.0001, AC.currentTime + t0 + dur);
+  o.connect(g); g.connect(AC.destination); o.start(AC.currentTime + t0); o.stop(AC.currentTime + t0 + dur + .02);
+}
+function boom() {
+  const t = AC.currentTime, sr = AC.sampleRate, len = sr * 1.6;
+  const buf = AC.createBuffer(1, len, sr), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) { const e = Math.pow(1 - i / len, 2.2); d[i] = (Math.random() * 2 - 1) * e * (i < sr * .015 ? i / (sr * .015) : 1); }
+  const n = AC.createBufferSource(); n.buffer = buf;
+  const lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(5000, t); lp.frequency.exponentialRampToValueAtTime(180, t + 1.2);
+  const ng = AC.createGain(); ng.gain.setValueAtTime(.9, t); ng.gain.exponentialRampToValueAtTime(.001, t + 1.5);
+  n.connect(lp); lp.connect(ng); ng.connect(AC.destination); n.start(t);
+  const o = AC.createOscillator(), og = AC.createGain(); o.type = 'sine';
+  o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(28, t + .6);
+  og.gain.setValueAtTime(1, t); og.gain.exponentialRampToValueAtTime(.001, t + .8);
+  o.connect(og); og.connect(AC.destination); o.start(t); o.stop(t + .85);
+  // chisporroteo
+  for (let i = 0; i < 6; i++) tone(800 + Math.random() * 1500, .15 + Math.random() * .5, .04, 'square', .025);
+}
+function sfx(k) {
+  if (muted) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    if (k === 'tap') tone(660, 0, .07, 'triangle', .1, 880);
+    if (k === 'boom') boom();
+    if (k === 'lit') tone(1200, 0, .12, 'sine', .06, 1500);
+    if (k === 'win') [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .09, .3, 'triangle', .12));
+    if (k === 'lose') [392, 330, 262].forEach((f, i) => tone(f, i * .12, .3, 'triangle', .1));
+    if (k === 'beep') tone(880, 0, .12, 'square', .06);
+  } catch (e) { }
+}
+
+// ================= tablero =================
+const boards = new Set();
+class Board {
+  constructor(cv, opt = {}) {
+    this.cv = cv; this.ctx = cv.getContext('2d'); this.opt = opt; this.parts = [];
+    cv.addEventListener('pointerdown', e => this.down(e));
+    boards.add(this);
+  }
+  load(L, keep) {
+    this.L = clone(L); this.grid = buildGrid(this.L);
+    this.orient = this.L.pieces.map(p => p.o);
+    this.ang = this.orient.map(o => o ? Math.PI / 4 : -Math.PI / 4); this.tAng = this.ang.slice();
+    this.base = this.orient.slice(); this.C = controls(this.L);
+    this.ctrlOf = []; this.C.forEach((ms, j) => ms.forEach(m => this.ctrlOf[m] = j));
+    this.booms = this.booms || []; this.fire = this.fire || [];
+    if (!keep) { this.booms = []; this.fire = []; this.hitSet = null; this.quake = 0; }
+    if (!keep) { this.taps = 0; this.hints = 0; this.solved = false; this.failed = false; this.t0 = performance.now(); this.tEnd = 0; this.hl = -1; this.parts = []; this.locked = false; }
+    this.limit = this.opt.noLimit ? 0 : (this.L.limit || 0); this.timeLimit = this.opt.noLimit ? 0 : (this.L.timeLimit || 0);
+    this.retrace(); this.resize();
+    if (!this.opt.editor) this.prepSolutions();
+  }
+  prepSolutions() {
+    const { sols } = countSolutions(this.L);
+    this.sols = sols;
+    this.minTaps = sols.length ? Math.min(...sols.map(s => popc(s))) : 0;
+  }
+  stateBits() { let s = 0; this.C.forEach((ms, j) => { if (this.orient[ms[0]] !== this.base[ms[0]]) s |= 1 << j; }); return s; }
+  retrace() {
+    const prevLit = this.lit || 0;
+    const r = trace(this.L, this.grid, this.orient, true); this.col = r.col; this.segs = r.segs;
+    this.lit = this.L.targets.filter(t => this.col[t.y * this.L.w + t.x] === t.c).length;
+    const prevB = this.hitSet || new Set();
+    this.hitSet = new Set(); this.L.bombs.forEach(([x, y], i) => { if (this.col[y * this.L.w + x]) this.hitSet.add(i); });
+    this.bombHit = this.hitSet.size > 0;
+    this.newBooms = [...this.hitSet].filter(i => !prevB.has(i));
+    return this.lit > prevLit;
+  }
+  resize() {
+    const p = this.cv.parentElement; if (!p || !this.L) return;
+    const pw = p.clientWidth - 16, ph = p.clientHeight - 16; if (pw <= 0 || ph <= 0) return;
+    this.cs = Math.floor(Math.min(pw / this.L.w, ph / this.L.h, 74));
+    this.dpr = window.devicePixelRatio || 1;
+    this.cw = this.cs * this.L.w; this.ch = this.cs * this.L.h;
+    this.cv.width = this.cw * this.dpr; this.cv.height = this.ch * this.dpr;
+    this.cv.style.width = this.cw + 'px'; this.cv.style.height = this.ch + 'px';
+  }
+  down(e) {
+    if (!this.L || !this.cs) return;
+    e.preventDefault();
+    const r = this.cv.getBoundingClientRect();
+    let px = e.clientX - r.left, py = e.clientY - r.top;
+    if (this.opt.rotated) { px = r.width - px; py = r.height - py; }
+    const x = Math.floor(px / (r.width / this.L.w)), y = Math.floor(py / (r.height / this.L.h));
+    if (x < 0 || y < 0 || x >= this.L.w || y >= this.L.h) return;
+    if (this.opt.onCell) return this.opt.onCell(x, y);
+    this.tap(x, y);
+  }
+  tap(x, y) {
+    if (this.solved || this.locked || this.failed) return;
+    const c = this.grid[y * this.L.w + x];
+    if (!c || c.k !== 'P') return;
+    const p = this.L.pieces[c.i];
+    if (p.fixed) { this.shake = { i: c.i, t: performance.now() }; return; }
+    for (const m of this.C[this.ctrlOf[c.i]]) { this.orient[m] ^= 1; this.tAng[m] += Math.PI / 2; }
+    this.taps++; this.hl = -1;
+    const wasHit = this.bombHit;
+    const more = this.retrace();
+    sfx('tap'); if (more) sfx('lit');
+    if (this.newBooms.length) this.explode(this.newBooms);
+    if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) { }
+    if (this.opt.onTap) this.opt.onTap(this);
+    if (isSolved(this.L, this.col)) {
+      this.solved = true; this.tEnd = performance.now();
+      this.burst();
+      setTimeout(() => this.opt.onSolve && this.opt.onSolve(this), 650);
+    } else if (this.limit && this.taps >= this.limit) this.fail('energy');
+  }
+  explode(list) {
+    const now = performance.now(), cs = this.cs;
+    sfx('boom'); this.quake = now;
+    if (navigator.vibrate) try { navigator.vibrate([80, 40, 160]); } catch (e) { }
+    for (const i of list) {
+      const [x, y] = this.L.bombs[i], cx = (x + .5) * cs, cy = (y + .5) * cs;
+      this.booms.push({ cx, cy, t: now });
+      for (let k = 0; k < 46; k++) { const a = Math.random() * 6.28, v = 1.5 + Math.random() * 6; this.fire.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, r: 2 + Math.random() * 3.5, kind: Math.random() < .25 ? 'debris' : 'spark' }); }
+      for (let k = 0; k < 14; k++) { const a = Math.random() * 6.28, v = .4 + Math.random() * 1.2; this.fire.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - .6, life: 1, r: cs * (.18 + Math.random() * .2), kind: 'smoke' }); }
+    }
+  }
+  fail(why) {
+    if (this.failed || this.solved) return;
+    this.failed = true; this.tEnd = performance.now(); sfx('lose');
+    setTimeout(() => this.opt.onFail && this.opt.onFail(this, why), 500);
+  }
+  time() { return (this.tEnd || performance.now()) - this.t0; }
+  hint() {
+    if (this.solved || !this.sols.length) return false;
+    const cur = this.stateBits(); let best = this.sols[0], bd = 99;
+    for (const s of this.sols) { const d = popc(s ^ cur); if (d < bd) { bd = d; best = s; } }
+    const diff = best ^ cur; const js = []; for (let j = 0; j < this.C.length; j++) if (diff >> j & 1) js.push(j);
+    if (!js.length) return false;
+    this.hl = this.C[js[Math.floor(Math.random() * js.length)]][0]; this.hlT = performance.now(); this.hints++;
+    return true;
+  }
+  burst() {
+    const cs = this.cs;
+    for (const t of this.L.targets) for (let i = 0; i < 26; i++) {
+      const a = Math.random() * 6.28, v = 1 + Math.random() * 4;
+      this.parts.push({ x: (t.x + .5) * cs, y: (t.y + .5) * cs, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, c: COL[t.c] });
+    }
+  }
+  draw(now) {
+    const c = this.ctx, L = this.L, cs = this.cs; if (!L || !cs || !this.cv.offsetParent) return;
+    c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); c.clearRect(0, 0, this.cw, this.ch);
+    const qk = this.quake ? Math.max(0, 1 - (now - this.quake) / 500) : 0;
+    if (qk > 0) { const m = qk * qk * cs * .14; c.translate((Math.random() * 2 - 1) * m, (Math.random() * 2 - 1) * m); }
+    c.globalCompositeOperation = 'source-over';
+    rr(c, 0, 0, this.cw, this.ch, 14); c.fillStyle = '#0e0e28'; c.fill();
+    c.strokeStyle = 'rgba(140,140,255,.07)'; c.lineWidth = 1;
+    for (let x = 1; x < L.w; x++) { c.beginPath(); c.moveTo(x * cs + .5, 6); c.lineTo(x * cs + .5, this.ch - 6); c.stroke(); }
+    for (let y = 1; y < L.h; y++) { c.beginPath(); c.moveTo(6, y * cs + .5); c.lineTo(this.cw - 6, y * cs + .5); c.stroke(); }
+    // muros
+    for (const [x, y] of L.walls) { rr(c, x * cs + 3, y * cs + 3, cs - 6, cs - 6, 8); const g = c.createLinearGradient(0, y * cs, 0, y * cs + cs); g.addColorStop(0, '#2c2c5c'); g.addColorStop(1, '#1a1a3c'); c.fillStyle = g; c.fill(); c.strokeStyle = '#3c3c78'; c.stroke(); }
+    // rayos
+    c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+    const ctr = v => (v + .5) * cs;
+    for (const pass of [0, 1, 2]) for (const [x1, y1, x2, y2, k] of this.segs) {
+      c.beginPath(); c.moveTo(ctr(x1), ctr(y1)); c.lineTo(ctr(x2), ctr(y2));
+      if (pass === 0) { c.strokeStyle = COL[k]; c.globalAlpha = .18; c.lineWidth = cs * .34; c.setLineDash([]); }
+      else if (pass === 1) { c.strokeStyle = COL[k]; c.globalAlpha = .85; c.lineWidth = cs * .09; c.setLineDash([]); }
+      else { c.strokeStyle = '#fff'; c.globalAlpha = .55; c.lineWidth = cs * .03; c.setLineDash([cs * .18, cs * .22]); c.lineDashOffset = -now / 25; }
+      c.stroke();
+    }
+    c.setLineDash([]); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+    // bombas
+    for (const [x, y] of L.bombs) {
+      const hit = this.col[y * L.w + x] > 0; let cx = ctr(x), cy = ctr(y);
+      if (hit) {
+        // cráter chamuscado
+        const g = c.createRadialGradient(cx, cy, 2, cx, cy, cs * .5); g.addColorStop(0, 'rgba(255,120,30,.35)'); g.addColorStop(.5, 'rgba(60,20,10,.6)'); g.addColorStop(1, 'transparent');
+        c.fillStyle = g; c.beginPath(); c.arc(cx, cy, cs * .5, 0, 7); c.fill();
+        c.beginPath(); c.arc(cx, cy, cs * .24, 0, 7); c.fillStyle = '#120806'; c.fill();
+        const fl = .5 + .5 * Math.sin(now / 70 + x * 3) * Math.sin(now / 113 + y);
+        c.strokeStyle = `rgba(255,${120 + 80 * fl | 0},40,${.6 + .4 * fl})`; c.lineWidth = 2; c.shadowColor = '#ff7a1a'; c.shadowBlur = 10;
+        for (let i = 0; i < 5; i++) { const a = i * 1.257 + x; c.beginPath(); c.moveTo(cx + Math.cos(a) * cs * .05, cy + Math.sin(a) * cs * .05); c.lineTo(cx + Math.cos(a + .3) * cs * .14, cy + Math.sin(a + .3) * cs * .14); c.lineTo(cx + Math.cos(a) * cs * .23, cy + Math.sin(a) * cs * .23); c.stroke(); }
+        c.shadowBlur = 0;
+        if (Math.random() < .12) this.fire.push({ x: cx + (Math.random() - .5) * cs * .3, y: cy, vx: (Math.random() - .5) * .3, vy: -.5 - Math.random() * .5, life: .7, r: cs * .12, kind: 'smoke' });
+        continue;
+      }
+      c.beginPath(); c.arc(cx, cy, cs * .26, 0, 7); c.fillStyle = '#1b1b30'; c.fill();
+      c.lineWidth = 3; c.strokeStyle = '#d0304a'; c.stroke();
+      for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; c.beginPath(); c.moveTo(cx + Math.cos(a) * cs * .27, cy + Math.sin(a) * cs * .27); c.lineTo(cx + Math.cos(a) * cs * .36, cy + Math.sin(a) * cs * .36); c.stroke(); }
+      c.shadowBlur = 0; c.fillStyle = '#ff4d6a'; c.font = `800 ${cs * .24}px Inter`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('!', cx, cy + 1);
+    }
+    // portales
+    for (const p of (L.portals || [])) {
+      const cx = ctr(p.x), cy = ctr(p.y), pc = PCOL[(p.p - 1) % PCOL.length];
+      const g = c.createRadialGradient(cx, cy, 2, cx, cy, cs * .4); g.addColorStop(0, pc); g.addColorStop(.5, pc + '55'); g.addColorStop(1, 'transparent');
+      c.fillStyle = g; c.beginPath(); c.arc(cx, cy, cs * .4, 0, 7); c.fill();
+      c.save(); c.translate(cx, cy); c.rotate(now / 400 * (p.p % 2 ? 1 : -1));
+      c.strokeStyle = pc; c.lineWidth = 3; c.shadowColor = pc; c.shadowBlur = 12;
+      for (let k = 0; k < 3; k++) { c.beginPath(); c.arc(0, 0, cs * .3, k * 2.09, k * 2.09 + 1.3); c.stroke(); }
+      c.restore(); c.shadowBlur = 0;
+      c.fillStyle = '#0e0e28'; c.beginPath(); c.arc(cx, cy, cs * .13, 0, 7); c.fill();
+    }
+    // emisores
+    for (const e of L.emitters) {
+      const x = e.x * cs, y = e.y * cs; rr(c, x + cs * .12, y + cs * .12, cs * .76, cs * .76, cs * .18);
+      c.fillStyle = '#171736'; c.fill(); c.shadowColor = COL[e.c]; c.shadowBlur = 14; c.lineWidth = 3; c.strokeStyle = COL[e.c]; c.stroke(); c.shadowBlur = 0;
+      c.save(); c.translate(x + cs / 2, y + cs / 2); c.rotate(e.d * Math.PI / 2);
+      c.beginPath(); c.moveTo(cs * .22, 0); c.lineTo(-cs * .12, -cs * .17); c.lineTo(-cs * .12, cs * .17); c.closePath(); c.fillStyle = COL[e.c]; c.fill(); c.restore();
+    }
+    // piezas
+    L.pieces.forEach((p, i) => {
+      this.ang[i] += (this.tAng[i] - this.ang[i]) * .28;
+      let cx = ctr(p.x), cy = ctr(p.y);
+      if (this.shake && this.shake.i === i && now - this.shake.t < 300) cx += Math.sin((now - this.shake.t) / 20) * 3;
+      if (!p.fixed) {
+        c.beginPath(); c.arc(cx, cy, cs * .4, 0, 7); c.fillStyle = 'rgba(255,255,255,.045)'; c.fill();
+        if (p.g) { const lc = LCOL[(p.g - 1) % LCOL.length]; c.lineWidth = 3; c.strokeStyle = lc; c.setLineDash([cs * .1, cs * .07]); c.stroke(); c.setLineDash([]);
+          c.beginPath(); c.arc(cx + cs * .3, cy - cs * .3, cs * .13, 0, 7); c.fillStyle = lc; c.fill(); c.fillStyle = '#10102a'; c.font = `800 ${cs * .17}px Inter`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(p.g, cx + cs * .3, cy - cs * .29); }
+        else { c.lineWidth = 1.5; c.strokeStyle = 'rgba(200,200,255,.16)'; c.stroke(); }
+      }
+      if (i === this.hl) { const a = .5 + .5 * Math.sin(now / 120); c.beginPath(); c.arc(cx, cy, cs * .44, 0, 7); c.lineWidth = 3; c.strokeStyle = `rgba(255,210,63,${.4 + .6 * a})`; c.shadowColor = '#ffd23f'; c.shadowBlur = 16; c.stroke(); c.shadowBlur = 0; }
+      c.save(); c.translate(cx, cy); c.rotate(this.ang[i]);
+      const len = cs * .4, th = cs * .1;
+      if (p.t === 's') {
+        c.fillStyle = 'rgba(120,255,240,.25)'; c.fillRect(-len, -th / 2, len * 2, th);
+        c.strokeStyle = '#7ffff0'; c.lineWidth = 2; c.shadowColor = '#7ffff0'; c.shadowBlur = 10; c.setLineDash([cs * .08, cs * .06]);
+        c.beginPath(); c.moveTo(-len, 0); c.lineTo(len, 0); c.stroke(); c.setLineDash([]);
+      } else if (p.fixed) {
+        c.fillStyle = '#6d6d90'; rr(c, -len, -th / 2, len * 2, th, 3); c.fill();
+        c.fillStyle = '#2a2a44'; [-len * .7, len * .7].forEach(px => { c.beginPath(); c.arc(px, 0, th * .32, 0, 7); c.fill(); });
+      } else {
+        const g = c.createLinearGradient(0, -th, 0, th); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#9aa8d8');
+        c.fillStyle = g; c.shadowColor = '#bcd'; c.shadowBlur = 12; rr(c, -len, -th / 2, len * 2, th, 3); c.fill();
+      }
+      c.restore(); c.shadowBlur = 0;
+    });
+    // objetivos
+    for (const t of L.targets) {
+      const cx = ctr(t.x), cy = ctr(t.y), got = this.col[t.y * L.w + t.x], ok = got === t.c, r = cs * .27;
+      if (ok) { c.shadowColor = COL[t.c]; c.shadowBlur = 22 + 6 * Math.sin(now / 150); c.beginPath(); c.arc(cx, cy, r, 0, 7); c.fillStyle = COL[t.c]; c.fill(); c.shadowBlur = 0; c.beginPath(); c.arc(cx, cy, r * .4, 0, 7); c.fillStyle = '#fff'; c.fill(); }
+      else { c.beginPath(); c.arc(cx, cy, r, 0, 7); c.fillStyle = '#0e0e28'; c.fill(); }
+      c.lineWidth = 4;
+      if (t.c === 3) { c.strokeStyle = COL[1]; c.beginPath(); c.arc(cx, cy, r, Math.PI / 2, Math.PI * 1.5); c.stroke(); c.strokeStyle = COL[2]; c.beginPath(); c.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2); c.stroke(); }
+      else { c.strokeStyle = COL[t.c]; c.beginPath(); c.arc(cx, cy, r, 0, 7); c.stroke(); }
+      if (!ok) { c.beginPath(); c.arc(cx, cy, r * .55, 0, 7); c.lineWidth = 2; c.strokeStyle = t.c === 3 ? COL[3] : COL[t.c]; c.globalAlpha = .45; c.stroke(); c.globalAlpha = 1; if (got) { c.beginPath(); c.arc(cx, cy, r * .3, 0, 7); c.fillStyle = COL[got]; c.fill(); } }
+    }
+    // explosiones
+    if (this.booms.length || this.fire.length) {
+      this.booms = this.booms.filter(b => now - b.t < 900);
+      for (const b of this.booms) {
+        const k = Math.max(0, (now - b.t) / 900);
+        if (k < .18) { c.fillStyle = `rgba(255,240,200,${.35 * (1 - k / .18)})`; c.fillRect(-20, -20, this.cw + 40, this.ch + 40); }
+        c.globalCompositeOperation = 'lighter';
+        const fr = cs * (.3 + 1.1 * Math.sqrt(k)), g = c.createRadialGradient(b.cx, b.cy, 0, b.cx, b.cy, fr);
+        g.addColorStop(0, `rgba(255,255,220,${1 - k})`); g.addColorStop(.3, `rgba(255,190,60,${.9 * (1 - k)})`); g.addColorStop(.65, `rgba(255,70,20,${.6 * (1 - k)})`); g.addColorStop(1, 'rgba(120,0,0,0)');
+        c.fillStyle = g; c.beginPath(); c.arc(b.cx, b.cy, fr, 0, 7); c.fill();
+        c.strokeStyle = `rgba(255,200,120,${.8 * (1 - k)})`; c.lineWidth = 4 * (1 - k) + 1;
+        c.beginPath(); c.arc(b.cx, b.cy, cs * (.3 + 2.4 * k), 0, 7); c.stroke();
+        c.globalCompositeOperation = 'source-over';
+      }
+      this.fire = this.fire.filter(p => p.life > 0);
+      for (const p of this.fire) {
+        p.x += p.vx; p.y += p.vy;
+        if (p.kind === 'smoke') { p.vx *= .97; p.vy = p.vy * .97 - .02; p.r *= 1.012; p.life -= .012; c.fillStyle = `rgba(70,60,70,${.45 * p.life})`; }
+        else if (p.kind === 'debris') { p.vx *= .95; p.vy = p.vy * .95 + .12; p.life -= .02; c.fillStyle = `rgba(40,30,30,${p.life})`; }
+        else { p.vx *= .93; p.vy = p.vy * .93 + .05; p.life -= .025; c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(255,${150 + 100 * p.life | 0},${60 * p.life | 0},${p.life})`; }
+        c.beginPath(); c.arc(p.x, p.y, p.r, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over';
+      }
+    }
+    // partículas
+    if (this.parts.length) {
+      c.globalCompositeOperation = 'lighter';
+      this.parts = this.parts.filter(p => p.life > 0);
+      for (const p of this.parts) { p.x += p.vx; p.y += p.vy; p.vx *= .96; p.vy *= .96; p.life -= .018; c.globalAlpha = Math.max(0, p.life); c.fillStyle = p.c; c.beginPath(); c.arc(p.x, p.y, 3, 0, 7); c.fill(); }
+      c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+    }
+    if (this.timeLimit && !this.solved && !this.failed && !this.locked && this.time() > this.timeLimit * 1000) this.fail('time');
+    if (this.opt.onFrame) this.opt.onFrame(this);
+  }
+}
+function popc(n) { let c = 0; while (n) { n &= n - 1; c++; } return c; }
+function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function loop(t) { boards.forEach(b => b.draw(t)); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+window.addEventListener('resize', () => boards.forEach(b => b.resize()));
+
+// ================= códigos para compartir =================
+// celdas: a-z = tramos vacíos (1..26); W muro, X bomba, R/B/V objetivo, E-H láser rojo dir0-3, I-L láser azul, M/N espejo, S/T divisor, Y/Z espejo fijo
+function encodeLevel(L, name) {
+  const w = L.w, h = L.h, cells = new Array(w * h).fill(null);
+  L.walls.forEach(([x, y]) => cells[y * w + x] = 'W');
+  L.bombs.forEach(([x, y]) => cells[y * w + x] = 'X');
+  L.targets.forEach(t => cells[t.y * w + t.x] = 'RBV'[t.c - 1]);
+  L.emitters.forEach(e => cells[e.y * w + e.x] = (e.c === 1 ? 'EFGH' : 'IJKL')[e.d]);
+  L.pieces.forEach(p => cells[p.y * w + p.x] = (p.fixed ? 'YZ'[p.o] : p.t === 's' ? 'ST'[p.o] : 'MN'[p.o]) + (p.g && !p.fixed ? p.g : ''));
+  (L.portals || []).forEach(p => cells[p.y * w + p.x] = 'OQUA'[p.p - 1]);
+  let s = 'P' + w + h, run = 0;
+  for (const c of cells) { if (!c) { run++; if (run === 26) { s += 'z'; run = 0; } } else { if (run) s += String.fromCharCode(96 + run); run = 0; s += c; } }
+  if (run) s += String.fromCharCode(96 + run);
+  const nm = (name || '').normalize('NFD').replace(/[^A-Za-z0-9]/g, '').slice(0, 12);
+  return nm ? s + '-' + nm : s;
+}
+function decodeLevel(str) {
+  const m = String(str).match(/P([5-9])([5-9])([A-Za-z][A-Za-z0-9]*)(?:-([A-Za-z0-9]{1,12}))?/); if (!m) return null;
+  const w = +m[1], h = +m[2], L = { w, h, walls: [], bombs: [], emitters: [], targets: [], pieces: [], portals: [] };
+  let i = 0;
+  for (const ch of m[3]) {
+    if (ch >= 'a' && ch <= 'z') { i += ch.charCodeAt(0) - 96; continue; }
+    if (ch >= '1' && ch <= '4') { const p = L.pieces[L.pieces.length - 1]; if (p && !p.fixed) p.g = +ch; continue; }
+    if ('OQUA'.includes(ch)) { L.portals.push({ x: i % w, y: Math.floor(i / w), p: 'OQUA'.indexOf(ch) + 1 }); i++; continue; }
+    const x = i % w, y = Math.floor(i / w); if (y >= h) return null;
+    if (ch === 'W') L.walls.push([x, y]); else if (ch === 'X') L.bombs.push([x, y]);
+    else if ('RBV'.includes(ch)) L.targets.push({ x, y, c: 'RBV'.indexOf(ch) + 1 });
+    else if ('EFGH'.includes(ch)) L.emitters.push({ x, y, d: 'EFGH'.indexOf(ch), c: 1 });
+    else if ('IJKL'.includes(ch)) L.emitters.push({ x, y, d: 'IJKL'.indexOf(ch), c: 2 });
+    else if ('MN'.includes(ch)) L.pieces.push({ x, y, t: 'm', o: 'MN'.indexOf(ch), fixed: false });
+    else if ('ST'.includes(ch)) L.pieces.push({ x, y, t: 's', o: 'ST'.indexOf(ch), fixed: false });
+    else if ('YZ'.includes(ch)) L.pieces.push({ x, y, t: 'm', o: 'YZ'.indexOf(ch), fixed: true });
+    else return null;
+    i++;
+  }
+  if (!L.emitters.length || !L.targets.length) return null;
+  if (!portalsOk(L)) return null;
+  return { L, name: m[4] || '' };
+}
+function portalsOk(L) {
+  const cnt = {}; (L.portals || []).forEach(p => cnt[p.p] = (cnt[p.p] || 0) + 1);
+  return Object.values(cnt).every(v => v === 2);
+}
+
+// ================= partida (campaña / diario / trampa) =================
+const game = { board: null, mode: null, idx: 0, timer: null };
+const gb = new Board($('gCv'), { onSolve: b => onSolve(b), onFail: (b, w) => onFail(b, w), onTap: () => updStat() });
+game.board = gb;
+function updStat() {
+  const b = gb; if (!b.L) return;
+  let t = fmt(b.time()), tc = '';
+  if (b.timeLimit) { const left = Math.max(0, b.timeLimit * 1000 - b.time()); t = '⏳ ' + fmt(left + 999); if (left < 15000) tc = ' style="color:#ff5a7a"'; }
+  const en = b.limit ? Math.max(0, b.limit - b.taps) : null;
+  $('gStat').innerHTML = (en !== null ? `<b style="color:${en <= 2 ? '#ff5a7a' : '#ffd23f'}">⚡ ${en}</b> energía` : `<b>${b.taps}</b> toques`) + `<br><span${tc}>${t}</span>`;
+}
+setInterval(() => { if ($('game').classList.contains('on') && !gb.solved && !gb.failed) updStat(); }, 250);
+
+const TIPS = [
+  [L => true, 'Tocá los <b>espejos</b> para girarlos. Encendé el <b>objetivo</b> ◎ sin tocar la <b>bomba</b> 💣. Ojo: cada giro gasta <b>⚡ energía</b>. ¡Pensá antes de tocar!'],
+  [L => L.pieces.some(p => p.fixed), 'Los espejos grises con tornillos están <b>fijos</b>. Hay <b>varios objetivos</b>: todos tienen que encenderse a la vez.'],
+  [L => L.pieces.some(p => p.t === 's'), 'El <b>divisor</b> (celeste) refleja el rayo y además lo deja pasar: ¡uno se vuelve dos!'],
+  [L => !!L.timeLimit, '⚠️ <b>NIVEL JEFE</b>: además de la energía, tenés <b>tiempo limitado</b>. ¡Rápido!'],
+  [L => (L.portals || []).length > 0, '🌀 <b>Portales</b>: el rayo que entra en uno sale por el otro del mismo color, en la misma dirección.'],
+  [L => L.emitters.some(e => e.c === 2), 'Ahora hay <b>dos colores</b>. Cada objetivo pide su color exacto. El de dos mitades pide <b>rojo + azul</b> al mismo tiempo.'],
+  [L => L.pieces.some(p => p.g), '🔗 <b>Espejos enlazados</b>: los que tienen el mismo número y color <b>giran juntos</b>. Mover uno mueve al otro.'],
+];
+const campCache = [];
+function getCamp(n) { return campCache[n] || (campCache[n] = campaignLevel(n)); }
+function tipFor(n) {
+  const L = getCamp(n);
+  for (let t = TIPS.length - 1; t >= 0; t--) {
+    const [f, txt] = TIPS[t]; if (!f(L)) continue;
+    let first = true; for (let j = 0; j < n; j++) if (f(getCamp(j))) { first = false; break; }
+    if (first) return txt;
+  }
+  return '';
+}
+function starsFor(b) { const extra = b.taps - b.minTaps; let s = extra <= 0 ? 3 : extra <= 2 ? 2 : 1; if (b.hints) s = Math.min(s, 2); return s; }
+const starStr = s => '★'.repeat(s) + '<i>' + '★'.repeat(3 - s) + '</i>';
+
+function startGame(L, mode, title, tip) {
+  game.mode = mode; show('game');
+  $('gTitle').textContent = title;
+  $('gTip').innerHTML = tip || ''; $('gTip').classList.toggle('on', !!tip);
+  game.L0 = L;
+  gb.opt.noLimit = mode !== 'camp';
+  $('gHint').style.display = mode === 'daily' ? 'none' : '';
+  requestAnimationFrame(() => { gb.load(L); updStat(); });
+}
+$('gReset').onclick = () => { if (gb.solved) return; gb.load(game.L0); updStat(); };
+$('gHint').onclick = () => {
+  if (gb.solved || gb.failed) return;
+  if (game.mode === 'camp' && gb.limit && gb.limit - gb.taps <= 1) { toast('No te alcanza la energía para una pista ⚡'); return; }
+  if (gb.hint()) { if (game.mode === 'camp' && gb.limit) gb.limit -= 1; updStat(); sfx('beep'); toast(game.mode === 'camp' ? 'Girá el espejo marcado 💡 (−1 ⚡)' : 'Girá el espejo marcado 💡'); }
+};
+$('gBack').onclick = () => { if (game.mode === 'camp') openLevels(); else if (game.mode === 'trap') show('menu'); else { refreshMenu(); show('menu'); } };
+
+function playCamp(n) {
+  game.idx = n;
+  const boss = n % 10 === 9;
+  startGame(getCamp(n), 'camp', (boss ? '👹 JEFE · ' : 'Nivel ') + (n + 1), tipFor(n));
+}
+function onFail(b, why) {
+  const n = game.idx;
+  modal(`<h2>${why === 'time' ? '⏳ ¡Se acabó el tiempo!' : '⚡ ¡Sin energía!'}</h2>
+    <p>${why === 'time' ? 'El jefe te ganó esta vez.' : 'Gastaste toda la energía sin encender todos los objetivos.'}</p>
+    <p style="font-size:13px">Tip: mirá bien el recorrido del rayo antes de girar. Hacen falta solo <b>${b.minTaps}</b> giros.</p>
+    <div class="btns"><button class="abtn pri" id="mx1">↺ Reintentar</button><button class="abtn" id="mx2">Niveles</button></div>`);
+  $('mx1').onclick = () => { closeModal(); playCamp(n); };
+  $('mx2').onclick = () => { closeModal(); openLevels(); };
+}
+function onSolve(b) {
+  sfx('win');
+  const t = fmt(b.time());
+  if (game.mode === 'camp') {
+    const s = starsFor(b), n = game.idx, before = rankOf(totalStars());
+    store.stars[n] = Math.max(store.stars[n] || 0, s); save(); window.onlineCamp && onlineCamp();
+    const after = rankOf(totalStars());
+    const next = n + 1 < CAMPAIGN.length, boss = n % 10 === 9;
+    const worldDone = boss ? `<p>🏆 <b>¡Venciste al jefe del ${WORLDS[Math.floor(n / 10)].name.split('·')[0].trim()}!</b>${next ? '<br>Se abre: ' + WORLDS[Math.floor(n / 10) + 1].name : ''}</p>` : '';
+    const rankUp = after.i > before.i ? `<p style="color:var(--yel)">⬆️ ¡Subiste de rango! Ahora sos <b>${after.ic} ${after.name}</b></p>` : '';
+    modal(`<h2>${boss ? '¡Jefe derrotado!' : '¡Nivel ' + (n + 1) + ' superado!'}</h2><div class="stars">${starStr(s)}</div>
+      <p><b>${b.taps}</b> giros (mínimo: ${b.minTaps}) · ${t}${b.hints ? ' · 💡' + b.hints : ''}</p>
+      ${worldDone}${rankUp}
+      ${s < 3 ? '<p style="font-size:13px">Para 3 ★: usá el mínimo de giros y ninguna pista.</p>' : ''}
+      <div class="btns">${next ? '<button class="abtn pri" id="mx1">Siguiente nivel →</button>' : '<p>👑 ¡Terminaste la campaña!</p>'}
+      <button class="abtn" id="mx2">↺ Repetir</button><button class="abtn" id="mx3">Niveles</button></div>`);
+    if (next) $('mx1').onclick = () => { closeModal(); playCamp(n + 1); };
+    $('mx2').onclick = () => { closeModal(); playCamp(n); };
+    $('mx3').onclick = () => { closeModal(); openLevels(); };
+  } else if (game.mode === 'daily') {
+    const s = starsFor(b), d = todayNum();
+    if (!store.daily[d]) { store.daily[d] = { taps: b.taps, min: b.minTaps, time: Math.round(b.time() / 1000), hints: b.hints, stars: s }; save(); window.onlineDaily && onlineDaily(d, store.daily[d]); }
+    const r = store.daily[d], st = streak();
+    const txt = dailyShare(r);
+    modal(`<h2>¡Desafío completado!</h2><div class="stars">${starStr(r.stars)}</div>
+      <p><b>${r.taps}</b> giros (mín. ${r.min}) · ${fmt(r.time * 1000)}</p>
+      <p>🔥 Racha: <b>${st} día${st > 1 ? 's' : ''}</b> seguido${st > 1 ? 's' : ''}. ¡Volvé mañana para no cortarla!</p>
+      <div class="code" style="white-space:pre-wrap;font-family:Inter">${txt}</div>
+      <div class="btns"><a class="abtn pri" href="${wa(txt)}" target="_blank" rel="noopener">Compartir por WhatsApp</a>
+      <button class="abtn" id="mx1">📋 Copiar resultado</button><button class="abtn" id="mx2">Menú</button></div>`);
+    $('mx1').onclick = e => copyText(txt, e.target);
+    $('mx2').onclick = () => { closeModal(); refreshMenu(); show('menu'); };
+  } else if (game.mode === 'trap') {
+    const who = game.trapName ? game.trapName : 'tu amigo';
+    window.onlineTrapSolved && onlineTrapSolved(b);
+    const txt = `😎 Resolví tu trampa en PRISMA en ${t} con ${b.taps} giros${b.hints ? ' (usé ' + b.hints + ' pista' + (b.hints > 1 ? 's' : '') + ')' : ''}. ¡Mandame otra más difícil!`;
+    modal(`<h2>¡Trampa desactivada!</h2><p>Saliste de la trampa de <b>${who}</b>.</p>
+      <p><b>${b.taps}</b> giros (mín. ${b.minTaps}) · ${t}</p>
+      <div class="btns"><a class="abtn pri" href="${wa(txt)}" target="_blank" rel="noopener">Avisarle por WhatsApp</a>
+      <button class="abtn" id="mx1">📋 Copiar respuesta</button><button class="abtn" id="mx3">😈 Armar mi propia trampa</button><button class="abtn" id="mx2">Menú</button></div>`);
+    $('mx1').onclick = e => copyText(txt, e.target);
+    $('mx2').onclick = () => { closeModal(); show('menu'); };
+    $('mx3').onclick = () => { closeModal(); openEditor(); };
+  }
+}
+
+// ================= rangos y campaña =================
+const RANKS = [[0, '✨', 'Chispa'], [10, '🔦', 'Linterna'], [25, '💡', 'Faro'], [45, '🔺', 'Prisma'], [65, '🌟', 'Supernova'], [85, '👑', 'Maestro de la Luz']];
+function rankOf(st) { let i = 0; RANKS.forEach((r, j) => { if (st >= r[0]) i = j; }); const r = RANKS[i], nx = RANKS[i + 1]; return { i, ic: r[1], name: r[2], next: nx ? nx[0] : null }; }
+function totalStars() { return store.stars.reduce((a, b) => a + (b || 0), 0); }
+function openLevels() {
+  const g = $('lGrid'); g.innerHTML = '';
+  for (let n = 0; n < CAMPAIGN.length; n++) {
+    if (n % 10 === 0) { const h = document.createElement('div'); h.className = 'whead'; h.textContent = WORLDS[n / 10].name; g.appendChild(h); }
+    const s = store.stars[n] || 0, open = store.unlockAll || n === 0 || (store.stars[n - 1] || 0) > 0, boss = n % 10 === 9;
+    const b = document.createElement('button');
+    b.className = 'lv' + (open ? '' : ' lock') + (s ? ' done' : '') + (boss ? ' boss' : '');
+    b.innerHTML = (open ? (boss ? '👹' : n + 1) : '🔒') + `<span>${'★'.repeat(s)}</span>`;
+    if (open) b.onclick = () => playCamp(n);
+    g.appendChild(b);
+  }
+  $('lUnlock').textContent = store.unlockAll ? '🔒 Volver a bloquear niveles' : '🔓 Desbloquear todos (modo prueba)';
+  $('lUnlock').onclick = () => { store.unlockAll = !store.unlockAll; save(); openLevels(); };
+  const r = rankOf(totalStars());
+  $('lStars').innerHTML = `<b>${totalStars()}</b> / ${CAMPAIGN.length * 3} ★<br>${r.ic} ${r.name}`;
+  show('levels');
+}
+
+// ================= diario =================
+function todayNum() { const d = new Date(); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); }
+function dailyIndex() { const d = new Date(); return Math.floor((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(2026, 10, 1)) / 864e5) + 1; }
+function dailyShare(r) {
+  const d = new Date();
+  return `PRISMA 🔦 Desafío #${dailyIndex()} (${d.getDate()}/${d.getMonth() + 1})\n${'⭐'.repeat(r.stars)}${'▫️'.repeat(3 - r.stars)} ${r.taps} giros · ${fmt(r.time * 1000)}${streak() > 1 ? ' · 🔥' + streak() : ''}\n¿Podés superarme?`;
+}
+function streak() {
+  let n = 0; const d = new Date();
+  if (!store.daily[todayNum()]) d.setDate(d.getDate() - 1);
+  while (true) { const k = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); if (!store.daily[k]) break; n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+function playDaily() {
+  const d = todayNum(), L = dailyLevel(d), done = store.daily[d];
+  startGame(L, 'daily', 'Desafío #' + dailyIndex(), done ? 'Ya lo completaste hoy. Podés volver a jugarlo, pero cuenta tu primer resultado.' : 'Es el mismo puzzle para todos hoy. ¡Compará tu resultado con tus amigos!');
+}
+
+// ================= modo trampa =================
+function openTrapMenu() {
+  modal(`<h2>😈 Modo Trampa</h2><p>Armá un nivel endiablado y mandáselo a tus amigos con un código. El juego verifica que tenga solución, ¡así que nada de trampas imposibles!</p>
+    <div class="btns"><button class="abtn pri" id="mx1">🛠️ Crear una trampa</button>
+    <p style="margin:10px 0 0">¿Te mandaron un código?</p><textarea id="mxCode" rows="2" placeholder="Pegá acá el código (empieza con P)"></textarea>
+    <button class="abtn" id="mx2">▶ Jugar trampa</button><button class="abtn" id="mx4">🌐 Trampas de la comunidad</button><button class="abtn" id="mx3">Cerrar</button></div>`);
+  $('mx1').onclick = () => { closeModal(); openEditor(); };
+  $('mx4').onclick = () => { closeModal(); openFeed('new'); };
+  $('mx2').onclick = () => {
+    const r = decodeLevel($('mxCode').value);
+    if (!r) { toast('Ese código no es válido 🤔'); return; }
+    if (!countSolutions(r.L).sols.length) { toast('Esa trampa no tiene solución'); return; }
+    closeModal(); game.trapName = r.name; game.trapId = null;
+    startGame(r.L, 'trap', r.name ? 'Trampa de ' + r.name : 'Trampa', r.name ? `<b>${r.name}</b> te armó esta trampa. ¿La podés resolver?` : 'Alguien te armó esta trampa. ¿La podés resolver?');
+  };
+  $('mx3').onclick = closeModal;
+}
+
+// ----- editor -----
+const ed = { w: 7, h: 7, cells: [], tool: 'M', checked: null };
+const TOOLS = [['M', '╱ Espejo'], ['S', '┆ Divisor'], ['ER', '🔴 Láser'], ['EB', '🔵 Láser'], ['T', '◎ Objetivo'], ['X', '💣 Bomba'], ['W', '▦ Muro'], ['F', '🔩 Fijo'], ['O', '🌀 Portal'], ['K', '🔗 Enlazar'], ['D', '🧽 Borrar']];
+const eb = new Board($('eCv'), { editor: true, onCell: (x, y) => edCell(x, y) });
+function openEditor() {
+  if (!ed.cells.length) edReset(+$('eSize').value);
+  const tb = $('eTools'); tb.innerHTML = '';
+  TOOLS.forEach(([k, lab]) => { const b = document.createElement('button'); b.className = 'tool' + (ed.tool === k ? ' on' : ''); b.textContent = lab; b.onclick = () => { ed.tool = k; [...tb.children].forEach(c => c.classList.toggle('on', c === b)); edInfo(); }; tb.appendChild(b); });
+  show('editor'); requestAnimationFrame(() => edSync());
+}
+function edReset(n) {
+  ed.w = ed.h = n; ed.cells = new Array(n * n).fill(null);
+  ed.cells[Math.floor(n / 2) * n] = { k: 'E', c: 1, d: 0 };
+  ed.checked = null;
+}
+$('eSize').onchange = e => { edReset(+e.target.value); edSync(); };
+$('eClear').onclick = () => { edReset(ed.w); edSync(); toast('Tablero limpio'); };
+function edLevel() {
+  const L = { w: ed.w, h: ed.h, walls: [], bombs: [], emitters: [], targets: [], pieces: [], portals: [] };
+  ed.cells.forEach((c, i) => {
+    if (!c) return; const x = i % ed.w, y = Math.floor(i / ed.w);
+    if (c.k === 'W') L.walls.push([x, y]); else if (c.k === 'X') L.bombs.push([x, y]);
+    else if (c.k === 'T') L.targets.push({ x, y, c: c.c }); else if (c.k === 'E') L.emitters.push({ x, y, d: c.d, c: c.c });
+    else if (c.k === 'M') L.pieces.push({ x, y, t: 'm', o: c.o, fixed: false, g: c.g || 0 }); else if (c.k === 'S') L.pieces.push({ x, y, t: 's', o: c.o, fixed: false, g: c.g || 0 });
+    else if (c.k === 'O') L.portals.push({ x, y, p: c.p });
+    else if (c.k === 'F') L.pieces.push({ x, y, t: 'm', o: c.o, fixed: true });
+  });
+  return L;
+}
+function edSync() { eb.load(edLevel(), true); ed.checked = null; edInfo(); }
+function edCell(x, y) {
+  const i = y * ed.w + x, c = ed.cells[i], t = ed.tool;
+  if (t === 'D') ed.cells[i] = null;
+  else if (t === 'M' || t === 'S' || t === 'F') { if (c && c.k === t) c.o ^= 1; else ed.cells[i] = { k: t, o: 0 }; }
+  else if (t === 'ER' || t === 'EB') { const col = t === 'ER' ? 1 : 2; if (c && c.k === 'E' && c.c === col) c.d = (c.d + 1) % 4; else ed.cells[i] = { k: 'E', c: col, d: 0 }; }
+  else if (t === 'T') { if (c && c.k === 'T') c.c = c.c % 3 + 1; else ed.cells[i] = { k: 'T', c: 1 }; }
+  else if (t === 'O') {
+    if (c && c.k === 'O') { if (c.p < 4) c.p++; else ed.cells[i] = null; }
+    else { const cnt = {}; ed.cells.forEach(q => { if (q && q.k === 'O') cnt[q.p] = (cnt[q.p] || 0) + 1; }); let p = 1; while (cnt[p] >= 2) p++; if (p > 4) { toast('Máximo 4 pares de portales'); return; } ed.cells[i] = { k: 'O', p }; }
+  }
+  else if (t === 'K') { if (c && (c.k === 'M' || c.k === 'S')) c.g = ((c.g || 0) + 1) % 4; else { toast('Tocá un espejo o divisor para enlazarlo'); return; } }
+  else ed.cells[i] = (c && c.k === t) ? null : { k: t };
+  if (controls(edLevel()).length > 12) { ed.cells[i] = c; toast('Máximo 12 piezas giratorias'); }
+  sfx('tap'); edSync();
+}
+function edInfo() {
+  const L = eb.L; if (!L) return;
+  const hints = { M: 'Tocá una casilla para poner un espejo. Tocalo otra vez para girarlo.', S: 'El divisor refleja y deja pasar el rayo. Tocalo de nuevo para girarlo.', ER: 'Láser rojo: tocalo otra vez para cambiar su dirección.', EB: 'Láser azul: tocalo otra vez para cambiar su dirección.', T: 'Objetivo: tocalo de nuevo para cambiar el color (rojo, azul o rojo+azul).', X: 'Bomba: el rayo NO puede tocarla.', O: 'Portal: poné dos del mismo color. Tocalo de nuevo para cambiar de par.', K: 'Tocá espejos para enlazarlos: los del mismo número giran juntos. Tocá de nuevo para cambiar de grupo.', W: 'Muro: bloquea el rayo.', F: 'Espejo fijo: el que juega no lo puede girar.', D: 'Tocá una casilla para borrarla.' };
+  const lit = L.targets.filter(t => eb.col[t.y * L.w + t.x] === t.c).length;
+  $('eInfo').innerHTML = `${hints[ed.tool]}<br><b>Consejo:</b> armá el nivel ya resuelto (todos los objetivos encendidos). Al compartirlo, el juego mezcla los espejos. · Objetivos: <b>${lit}/${L.targets.length}</b>`;
+}
+function edAnalyze() {
+  const L = edLevel();
+  if (!L.emitters.length) return { err: 'Poné al menos un láser.' };
+  if (!L.targets.length) return { err: 'Poné al menos un objetivo ◎.' };
+  if (!portalsOk(L)) return { err: 'Cada portal necesita su pareja: tiene que haber <b>exactamente dos</b> de cada color.' };
+  const { C, sols } = countSolutions(L);
+  if (!C.length) return { err: 'Agregá espejos o divisores que se puedan girar.' };
+  if (!sols.length) return { err: 'Esta trampa <b>no tiene solución</b>. Probá con los espejos hasta que todos los objetivos se enciendan a la vez.' };
+  // estado inicial: el más lejano a todas las soluciones
+  let best = -1, bestS = [];
+  for (let s = 0; s < (1 << C.length); s++) { let m = 99; for (const q of sols) m = Math.min(m, popc(s ^ q)); if (m > best) { best = m; bestS = [s]; } else if (m === best) bestS.push(s); }
+  const start = bestS[Math.floor(Math.random() * bestS.length)];
+  const P = clone(L); C.forEach((ms, j) => { if ((start >> j) & 1) ms.forEach(m => P.pieces[m].o ^= 1); });
+  const score = Math.min(5, Math.max(1, Math.round((C.length / 3) + (sols.length === 1 ? 1.5 : 0) + L.bombs.length * .3 + (L.emitters.length > 1 ? 1 : 0) + (L.portals.length ? .5 : 0) + (L.pieces.some(p => p.g) ? .5 : 0) - (sols.length > 3 ? 1 : 0))));
+  return { L: P, sols: sols.length, R: C.length, dist: best, score };
+}
+$('eCheck').onclick = () => {
+  const a = edAnalyze();
+  if (a.err) { modal(`<h2>Todavía no 🔧</h2><p>${a.err}</p><div class="btns"><button class="abtn" onclick="closeModal()">Seguir editando</button></div>`); return; }
+  modal(`<h2>${a.sols === 1 ? '¡Trampa perfecta! 😈' : '¡Tiene solución! ✔'}</h2>
+    <p>${a.sols === 1 ? 'Tiene <b>una sola solución</b>, ideal para un desafío difícil.' : `Tiene <b>${a.sols} soluciones</b>. Para hacerla más difícil, agregá bombas u objetivos que dejen una sola salida.`}</p>
+    <p>Dificultad: <span style="color:var(--yel)">${'★'.repeat(a.score)}${'☆'.repeat(5 - a.score)}</span><br>Hacen falta al menos <b>${a.dist}</b> toques para resolverla.</p>
+    <div class="btns"><button class="abtn pri" id="mx1">📤 Compartir</button><button class="abtn" id="mx2">▶ Probarla yo</button><button class="abtn" onclick="closeModal()">Seguir editando</button></div>`);
+  $('mx1').onclick = () => $('eShare').onclick();
+  $('mx2').onclick = () => { closeModal(); game.trapName = ''; game.trapId = null; startGame(a.L, 'trap', 'Prueba de tu trampa', 'Así la va a ver tu amigo. Tocá ← para volver al menú.'); };
+};
+$('eShare').onclick = () => {
+  const a = edAnalyze();
+  if (a.err) { modal(`<h2>Todavía no 🔧</h2><p>${a.err}</p><div class="btns"><button class="abtn" onclick="closeModal()">Seguir editando</button></div>`); return; }
+  let name = ''; try { name = localStorage.getItem('prisma_name') || ''; } catch (e) { }
+  modal(`<h2>📤 Compartir trampa</h2><p>¿Con qué nombre la firmás?</p><input type="text" id="mxName" maxlength="12" placeholder="Tu nombre" value="${name}">
+    <div class="btns"><button class="abtn pri" id="mx1">Generar código</button><button class="abtn" onclick="closeModal()">Cancelar</button></div>`);
+  $('mx1').onclick = () => {
+    const nm = $('mxName').value.trim(); try { localStorage.setItem('prisma_name', nm); } catch (e) { }
+    const code = encodeLevel(a.L, nm);
+    const txt = `😈 Te armé una trampa en PRISMA (dificultad ${'★'.repeat(a.score)}). ¿Te animás?\nCódigo: ${code}`;
+    modal(`<h2>¡Trampa lista!</h2><p>Mandale este código a tus amigos. Lo pegan en <b>Modo Trampa → Jugar trampa</b>.</p>
+      <div class="code">${code}</div>
+      <div class="btns"><a class="abtn pri" href="${wa(txt)}" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+      <button class="abtn" id="mx2">📋 Copiar mensaje</button><button class="abtn" id="mx3">🌐 Publicar en la comunidad</button><button class="abtn" onclick="closeModal()">Listo</button></div>`);
+    $('mx2').onclick = e => copyText(txt, e.target);
+    $('mx3').onclick = () => publishTrapOnline(code, a.score);
+  };
+};
+
+// ================= duelo =================
+const duel = { s: [0, 0], round: 0, L: null, over: false };
+const db1 = new Board($('dCv1'), { onSolve: () => duelWin(0) });
+const db2 = new Board($('dCv2'), { rotated: true, onSolve: () => duelWin(1) });
+function openDuel() { duel.s = [0, 0]; duel.round = 0; show('duel'); duelRound(); }
+function duelPts() { $('dS1').textContent = '●'.repeat(duel.s[0]) + '○'.repeat(2 - duel.s[0]); $('dS2').textContent = '●'.repeat(duel.s[1]) + '○'.repeat(2 - duel.s[1]); }
+function duelRound() {
+  duel.round++; duel.over = false; duelPts();
+  $('dRound').textContent = 'Ronda ' + duel.round + ' · al mejor de 3';
+  const tier = TIERS[['t3', 't5', 't6'][Math.min(duel.round - 1, 2)]];
+  let L = null; while (!L) L = generate((Math.random() * 1e9) | 0, tier);
+  duel.L = L;
+  requestAnimationFrame(() => {
+    db1.load(L); db2.load(L); db1.locked = db2.locked = true;
+    let n = 3; const ov = [$('dO1'), $('dO2')];
+    const tick = () => {
+      ov.forEach(o => { o.innerHTML = n > 0 ? n : '¡YA!'; o.classList.add('on'); });
+      sfx('beep');
+      if (n > 0) { n--; setTimeout(tick, 700); }
+      else setTimeout(() => { ov.forEach(o => o.classList.remove('on')); db1.locked = db2.locked = false; db1.t0 = db2.t0 = performance.now(); }, 450);
+    };
+    tick();
+  });
+}
+function duelWin(p) {
+  if (duel.over) return; duel.over = true;
+  db1.locked = db2.locked = true;
+  duel.s[p]++; duelPts(); sfx('win');
+  const ov = [$('dO1'), $('dO2')];
+  const champ = duel.s[p] >= 2;
+  ov.forEach((o, i) => {
+    o.innerHTML = (i === p ? (champ ? '🏆 ¡GANASTE EL DUELO!' : '¡Ronda para vos!') : (champ ? 'Perdiste el duelo 😵' : 'Te ganaron esta 😬')) +
+      `<small>${champ ? '' : 'Siguiente ronda en un momento…'}</small>` + (champ ? '<button class="abtn pri dre">Revancha</button><button class="abtn dex">Salir</button>' : '');
+    o.classList.add('on');
+  });
+  if (champ) {
+    document.querySelectorAll('.dre').forEach(b => b.onclick = () => { ov.forEach(o => o.classList.remove('on')); openDuel(); });
+    document.querySelectorAll('.dex').forEach(b => b.onclick = () => { ov.forEach(o => o.classList.remove('on')); show('menu'); });
+  } else setTimeout(() => { ov.forEach(o => o.classList.remove('on')); duelRound(); }, 2200);
+}
+$('dExit').onclick = () => { duel.over = true; ['dO1', 'dO2'].forEach(i => $(i).classList.remove('on')); show('menu'); };
+
+// ================= menú =================
+function refreshMenu() {
+  const r = rankOf(totalStars());
+  $('mCampSub').textContent = `${store.stars.filter(s => s).length}/30 niveles · ${totalStars()} ★`;
+  $('mRank').innerHTML = `${r.ic} Rango: <b>${r.name}</b>` + (r.next !== null ? ` · ${r.next - totalStars() === 1 ? 'falta' : 'faltan'} ${r.next - totalStars()} ★ para subir` : ' · ¡rango máximo!');
+  const st = streak();
+  $('mDailySub').textContent = (store.daily[todayNum()] ? `#${dailyIndex()} completado ✓ · ¡volvé mañana!` : `#${dailyIndex()} · el mismo puzzle para todos`) + (st ? ` · 🔥 ${st}` : '');
+  $('mSnd').textContent = muted ? '🔇 Sin sonido' : '🔊 Sonido';
+}
+$('mCamp').onclick = openLevels;
+$('mDaily').onclick = playDaily;
+$('mTrap').onclick = openTrapMenu;
+$('mDuel').onclick = openDuel;
+$('mSnd').onclick = () => { muted = !muted; try { localStorage.setItem('prisma_mute', muted ? '1' : '0'); } catch (e) { } refreshMenu(); sfx('tap'); };
+$('mHow').onclick = () => modal(`<h2>Cómo jugar</h2><ul class="how">
+  <li>🔦 Los <b>láseres</b> disparan rayos de luz.</li>
+  <li>╱ Tocá los <b>espejos</b> para girarlos y desviar el rayo.</li>
+  <li>◎ Encendé <b>todos los objetivos</b> a la vez con el color correcto.</li>
+  <li>💣 El rayo <b>no puede tocar las bombas</b>.</li>
+  <li>┆ El <b>divisor</b> parte el rayo en dos.</li>
+  <li>🟣 Rojo + azul en el mismo objetivo = violeta.</li>
+  <li>🌀 Los <b>portales</b> teletransportan el rayo al otro del mismo color.</li>
+  <li>🔗 Los <b>espejos enlazados</b> (mismo número) giran juntos.</li>
+  <li>⚡ En la campaña la <b>energía es limitada</b>: cada giro gasta 1. Los <b>jefes</b> 👹 además tienen reloj.</li>
+  <li>⭐ Menos giros = más estrellas. Cada nivel tiene una sola solución.</li></ul>
+  <div class="btns"><button class="abtn pri" onclick="closeModal()">¡A jugar!</button></div>`);
+document.querySelectorAll('.back:not(#gBack)').forEach(b => b.onclick = () => { refreshMenu(); show('menu'); });
+refreshMenu();
+</script>
+<script>
+// ================= PRISMA online: interfaz =================
+const ON = window.Online || { enabled: false, init: cb => cb && cb(null) };
+const AVATARS = ['🦊', '🐱', '🐼', '🐸', '🐵', '🦁', '🐯', '🐙', '🦄', '🐲', '👽', '🤖', '👻', '💀', '🎃', '🦖', '🐺', '🦉', '🐧', '🦈', '⚡', '🔥', '💎', '🚀'];
+const ACOLORS = ['#7a2cff', '#2f7bff', '#00b3a4', '#2fbf4a', '#ffb020', '#ff6a2f', '#ff3b6b', '#d94bd0'];
+let me = null;
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const av = (u, size = 40) => `<span class="av" style="width:${size}px;height:${size}px;font-size:${size * .55}px;background:${esc(u && u.color || '#333')}">${esc(u && u.avatar || '❔')}</span>`;
+function needOnline() {
+  if (!ON.enabled) { modal(`<h2>🌐 Modo online</h2><p>Las cuentas, rankings, amigos y mensajes funcionan en la versión publicada del juego (web o APK).</p><div class="btns"><button class="abtn" onclick="closeModal()">Entendido</button></div>`); return false; }
+  if (!me) { loginModal(); return false; }
+  return true;
+}
+function loginModal(first) {
+  modal(`<h2>${first ? '¡Bienvenido a PRISMA!' : 'Iniciá sesión'}</h2>
+    <p>Entrá para aparecer en los rankings, sumar amigos y publicar tus trampas.</p>
+    <div class="btns"><button class="abtn pri" id="lgG"><span style="background:#fff;color:#4285f4;border-radius:50%;padding:0 6px;margin-right:6px;font-weight:900">G</span>Entrar con Google</button>
+    <button class="abtn" id="lgA">👤 Jugar como invitado</button>
+    <button class="abtn" id="lgN" style="background:none;border:0;color:var(--dim)">Ahora no</button></div>
+    <p style="font-size:12px;color:var(--dim)">Como invitado podés jugar online. Después podés vincular tu cuenta de Google sin perder nada.</p>`);
+  $('lgG').onclick = async () => { try { await ON.signInGoogle(); closeModal(); } catch (e) { toast('No se pudo entrar con Google'); console.error(e); } };
+  $('lgA').onclick = async () => { try { await ON.signInGuest(); closeModal(); } catch (e) { toast('No se pudo entrar como invitado'); console.error(e); } };
+  $('lgN').onclick = closeModal;
+}
+function renderUserChip() {
+  const el = $('mUser'); if (!el) return;
+  if (!ON.enabled) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.innerHTML = me ? `${av(me, 30)}<span>${esc(me.name)}</span>` : '<span>👤 Entrar</span>';
+}
+
+// ----- sincronización -----
+function mergeCloud() {
+  if (!me) return;
+  const cloud = me.campaign || [];
+  for (let i = 0; i < 30; i++) store.stars[i] = Math.max(store.stars[i] || 0, cloud[i] || 0);
+  save(); syncCloud();
+}
+function syncCloud() {
+  if (!ON.enabled || !me) return;
+  ON.syncProgress({ stars: Array.from({ length: 30 }, (_, i) => store.stars[i] || 0), totalStars: totalStars(), streak: streak(), rankName: rankOf(totalStars()).name }).catch(e => console.warn(e));
+}
+window.onlineCamp = () => syncCloud();
+window.onlineDaily = (d, r) => { if (ON.enabled && me) { ON.submitDaily(d, r).catch(e => console.warn(e)); syncCloud(); } };
+window.onlineTrapSolved = (b) => { if (ON.enabled && me && game.trapId) ON.recordSolve(game.trapId, b.taps, Math.round(b.time() / 1000)).catch(e => console.warn(e)); };
+
+// ----- perfil -----
+let pAv, pCol;
+function openProfile() {
+  if (!needOnline()) return;
+  pAv = me.avatar; pCol = me.color;
+  const r = rankOf(totalStars());
+  $('pBody').innerHTML = `
+    <div style="text-align:center">${'<span id="pBig">' + av(me, 84) + '</span>'}</div>
+    <label class="lbl">Nombre</label><input type="text" id="pName" maxlength="16" value="${esc(me.name)}">
+    <label class="lbl">Avatar</label><div class="pick" id="pAvs">${AVATARS.map(a => `<button data-a="${a}" class="${a === pAv ? 'on' : ''}">${a}</button>`).join('')}</div>
+    <label class="lbl">Color</label><div class="pick" id="pCols">${ACOLORS.map(c => `<button data-c="${c}" class="${c === pCol ? 'on' : ''}" style="background:${c}"></button>`).join('')}</div>
+    <button class="abtn pri" id="pSave" style="width:100%;margin-top:14px">Guardar perfil</button>
+    <div class="statgrid"><div><b>${totalStars()}</b><span>estrellas</span></div><div><b>${r.ic}</b><span>${r.name}</span></div><div><b>🔥${streak()}</b><span>racha</span></div></div>
+    <label class="lbl">Tu código de amigo</label><div class="code" style="text-align:center;font-size:22px;letter-spacing:4px">${esc(me.friendCode || '—')}</div>
+    <div class="btns" style="display:flex;flex-direction:column;gap:9px;margin-top:14px">
+      ${me.guest ? '<button class="abtn pri" id="pLink">🔗 Vincular con Google (no perdés nada)</button>' : ''}
+      <button class="abtn" id="pBlocked">🚫 Usuarios bloqueados</button>
+      <button class="abtn" id="pOut">Cerrar sesión</button>
+      <button class="abtn" id="pDel" style="color:#ff6b8a">Eliminar mi cuenta</button>
+    </div>`;
+  $('pAvs').onclick = e => { const a = e.target.closest('button'); if (!a) return; pAv = a.dataset.a; [...$('pAvs').children].forEach(b => b.classList.toggle('on', b === a)); $('pBig').innerHTML = av({ avatar: pAv, color: pCol }, 84); };
+  $('pCols').onclick = e => { const a = e.target.closest('button'); if (!a) return; pCol = a.dataset.c; [...$('pCols').children].forEach(b => b.classList.toggle('on', b === a)); $('pBig').innerHTML = av({ avatar: pAv, color: pCol }, 84); };
+  $('pSave').onclick = async () => {
+    const n = $('pName').value.trim();
+    if (!ON.nameOk(n)) { toast('Ese nombre no está permitido (2 a 16 letras, sin malas palabras)'); return; }
+    try { await ON.saveProfile({ name: n, avatar: pAv, color: pCol }); toast('Perfil guardado ✓'); renderUserChip(); } catch (e) { toast('No se pudo guardar'); }
+  };
+  if ($('pLink')) $('pLink').onclick = async () => { try { const r = await ON.linkGoogle(); toast(r === 'linked' ? '¡Cuenta vinculada! ✓' : 'Entraste con tu cuenta de Google'); openProfile(); } catch (e) { toast('No se pudo vincular'); } };
+  $('pOut').onclick = async () => { await ON.signOut(); show('menu'); };
+  $('pBlocked').onclick = openBlocked;
+  $('pDel').onclick = () => {
+    modal(`<h2>¿Eliminar tu cuenta?</h2><p>Se borran tu perfil, tus amigos y tu código. Tu progreso queda solo en este celular. <b>No se puede deshacer.</b></p>
+      <div class="btns"><button class="abtn" id="mx1" style="background:#5a0a20">Sí, eliminar</button><button class="abtn pri" onclick="closeModal()">Cancelar</button></div>`);
+    $('mx1').onclick = async () => {
+      try { await ON.deleteAccount(); closeModal(); toast('Cuenta eliminada'); show('menu'); }
+      catch (e) { if (e.code === 'auth/requires-recent-login') toast('Por seguridad, cerrá sesión, volvé a entrar e intentá de nuevo'); else toast('No se pudo eliminar'); }
+    };
+  };
+  show('profile');
+}
+async function openBlocked() {
+  const ids = await ON.blockedList();
+  const us = await Promise.all(ids.map(id => ON.getUser(id).catch(() => null)));
+  modal(`<h2>🚫 Bloqueados</h2>${ids.length ? '' : '<p>No bloqueaste a nadie.</p>'}<div id="blk"></div><div class="btns"><button class="abtn" onclick="closeModal()">Cerrar</button></div>`);
+  ids.forEach((id, i) => { const u = us[i] || { name: 'Usuario', avatar: '❔' }; const r = document.createElement('div'); r.className = 'urow'; r.innerHTML = `${av(u, 34)}<div class="un">${esc(u.name)}</div><button class="sbtn">Desbloquear</button>`; r.querySelector('button').onclick = async () => { await ON.unblock(id); r.remove(); toast('Desbloqueado'); }; $('blk').appendChild(r); });
+}
+
+// ----- rankings -----
+let rkTab = 'global';
+function openRanks(tab) {
+  if (!needOnline()) return;
+  rkTab = tab || rkTab; show('ranks');
+  document.querySelectorAll('#rkTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === rkTab));
+  $('rkList').innerHTML = '<p class="muted">Cargando…</p>';
+  ON.leaderboard(rkTab, todayNum()).then(list => {
+    if (!list.length) { $('rkList').innerHTML = `<p class="muted">${rkTab === 'daily' ? 'Todavía nadie completó el desafío de hoy. ¡Sé el primero!' : rkTab === 'friends' ? 'Agregá amigos para competir con ellos.' : 'Sin datos todavía.'}</p>`; return; }
+    $('rkList').innerHTML = list.map((u, i) => `<div class="urow${u.uid === me.uid ? ' mine' : ''}"><span class="pos">${i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</span>${av(u, 36)}<div class="un">${esc(u.name)}<small>${esc(u.sub)}</small></div><b class="val">${esc(u.value)}</b></div>`).join('');
+  }).catch(e => { console.error(e); $('rkList').innerHTML = '<p class="muted">No se pudo cargar el ranking.</p>'; });
+}
+
+// ----- amigos -----
+async function openFriends() {
+  if (!needOnline()) return;
+  show('friends');
+  $('frCode').textContent = me.friendCode || '—';
+  $('frList').innerHTML = '<p class="muted">Cargando…</p>';
+  try {
+    const [reqs, fr] = await Promise.all([ON.requests(), ON.friends()]);
+    $('frReqs').innerHTML = reqs.length ? '<div class="lbl">Solicitudes</div>' : '';
+    reqs.forEach(r => {
+      const d = document.createElement('div'); d.className = 'urow';
+      d.innerHTML = `${av({ avatar: r.fromAvatar, color: r.fromColor }, 36)}<div class="un">${esc(r.fromName)}<small>quiere ser tu amigo</small></div><button class="sbtn ok">✓</button><button class="sbtn">✕</button>`;
+      const [a, x] = d.querySelectorAll('button');
+      a.onclick = async () => { await ON.accept(r.from); toast('¡Ahora son amigos! 🎉'); openFriends(); };
+      x.onclick = async () => { await ON.decline(r.from); d.remove(); };
+      $('frReqs').appendChild(d);
+    });
+    fr.sort((a, b) => (b.totalStars || 0) - (a.totalStars || 0));
+    $('frList').innerHTML = fr.length ? '' : '<p class="muted">Todavía no tenés amigos en PRISMA. Pasales tu código 👆</p>';
+    fr.forEach(u => {
+      const d = document.createElement('div'); d.className = 'urow';
+      d.innerHTML = `${av(u, 40)}<div class="un">${esc(u.name)}<small>${esc((u.rankName || ''))} · ${u.totalStars || 0} ★${u.streak ? ' · 🔥' + u.streak : ''}</small></div><button class="sbtn">💬</button><button class="sbtn">⋯</button>`;
+      const [c, m] = d.querySelectorAll('button');
+      c.onclick = () => openChat(u);
+      m.onclick = () => friendMenu(u);
+      $('frList').appendChild(d);
+    });
+  } catch (e) { console.error(e); $('frList').innerHTML = '<p class="muted">No se pudo cargar.</p>'; }
+}
+$('frAdd') && ($('frAdd').onclick = async () => {
+  const code = $('frInput').value;
+  if (code.trim().length !== 6) { toast('El código tiene 6 caracteres'); return; }
+  const r = await ON.addFriend(code).catch(() => 'error');
+  toast({ sent: 'Solicitud enviada ✓', accepted: '¡Ahora son amigos! 🎉', already: 'Ya son amigos', notfound: 'No existe ese código', self: 'Ese es tu propio código 😄', blocked: 'No se pudo enviar', error: 'No se pudo enviar' }[r]);
+  $('frInput').value = ''; if (r === 'accepted') openFriends();
+});
+function friendMenu(u) {
+  modal(`<div style="text-align:center">${av(u, 64)}</div><h2 style="margin-top:8px">${esc(u.name)}</h2><p>${esc(u.rankName || '')} · ${u.totalStars || 0} ★</p>
+    <div class="btns"><button class="abtn pri" id="mx1">💬 Mensajes</button><button class="abtn" id="mx2">Eliminar amigo</button>
+    <button class="abtn" id="mx3">🚫 Bloquear</button><button class="abtn" id="mx4" style="color:#ff6b8a">⚑ Denunciar</button><button class="abtn" onclick="closeModal()">Cerrar</button></div>`);
+  $('mx1').onclick = () => { closeModal(); openChat(u); };
+  $('mx2').onclick = async () => { await ON.removeFriend(u.uid); closeModal(); toast('Amigo eliminado'); openFriends(); };
+  $('mx3').onclick = () => confirmBlock(u, openFriends);
+  $('mx4').onclick = () => reportModal(u, '');
+}
+function confirmBlock(u, after) {
+  modal(`<h2>¿Bloquear a ${esc(u.name)}?</h2><p>Deja de ser tu amigo, no te puede mandar mensajes ni solicitudes.</p>
+    <div class="btns"><button class="abtn" id="mx1" style="background:#5a0a20">Bloquear</button><button class="abtn pri" onclick="closeModal()">Cancelar</button></div>`);
+  $('mx1').onclick = async () => { await ON.block(u.uid); closeModal(); toast('Usuario bloqueado'); after && after(); };
+}
+function reportModal(u, text) {
+  const R = ['Insultos o acoso', 'Contenido sexual', 'Me pidió datos personales o fotos', 'Spam', 'Otro'];
+  modal(`<h2>⚑ Denunciar</h2><p>¿Qué pasó con <b>${esc(u.name)}</b>?</p><div class="btns">${R.map((r, i) => `<button class="abtn" data-i="${i}">${r}</button>`).join('')}<button class="abtn" onclick="closeModal()">Cancelar</button></div>
+    <p style="font-size:12px;color:var(--dim)">Si alguien te incomoda o te pide fotos o datos, contáselo a un adulto de confianza.</p>`);
+  $('mCard').querySelectorAll('[data-i]').forEach(b => b.onclick = async () => {
+    await ON.report(u.uid, text, R[+b.dataset.i]).catch(() => { });
+    modal(`<h2>Gracias por avisar</h2><p>Recibimos tu denuncia. ¿Querés bloquear también a ${esc(u.name)}?</p><div class="btns"><button class="abtn" id="mx1">🚫 Bloquear</button><button class="abtn pri" onclick="closeModal()">No, listo</button></div>`);
+    $('mx1').onclick = () => confirmBlock(u, () => show('friends') || openFriends());
+  });
+}
+
+// ----- chat -----
+let chatU = null, chatUnsub = null;
+const QUICK = ['¡Te reto! 😈', 'GG 🏆', '¿Duelo? ⚔️', 'Te mandé una trampa 💣', '¿Cuántas ★ tenés?', '😂', '🔥', '👏'];
+function openChat(u) {
+  chatU = u; show('chat');
+  $('chHead').innerHTML = `${av(u, 32)}<span>${esc(u.name)}</span>`;
+  $('chQuick').innerHTML = QUICK.map(q => `<button class="tool">${q}</button>`).join('');
+  $('chQuick').onclick = e => { const b = e.target.closest('button'); if (b) sendChat(b.textContent); };
+  $('chMsgs').innerHTML = '<p class="muted">Cargando…</p>';
+  if (chatUnsub) chatUnsub();
+  chatUnsub = ON.listenChat(u.uid, (msgs, err) => {
+    if (!msgs) { $('chMsgs').innerHTML = '<p class="muted">No se pudieron cargar los mensajes.</p>'; return; }
+    $('chMsgs').innerHTML = '<p class="safety">🔒 Solo tus amigos pueden escribirte. No compartas tu dirección, teléfono, fotos ni contraseñas.</p>' +
+      msgs.map(m => `<div class="msg ${m.mine ? 'me' : ''}" data-t="${esc(m.text)}">${esc(m.text)}${m.mine ? '' : '<button class="rep" title="Denunciar">⚑</button>'}</div>`).join('');
+    $('chMsgs').scrollTop = 1e9;
+  });
+}
+$('chMsgs') && ($('chMsgs').onclick = e => { const r = e.target.closest('.rep'); if (r) reportModal(chatU, r.parentElement.dataset.t); });
+async function sendChat(t) {
+  t = (t || '').trim(); if (!t) return;
+  try { await ON.send(chatU.uid, t); } catch (e) { toast('No se pudo enviar (¿siguen siendo amigos?)'); }
+}
+$('chSend') && ($('chSend').onclick = () => { const i = $('chInput'); sendChat(i.value); i.value = ''; });
+$('chInput') && $('chInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('chSend').onclick(); });
+$('chMore') && ($('chMore').onclick = () => friendMenu(chatU));
+$('chBack') && ($('chBack').onclick = () => { if (chatUnsub) { chatUnsub(); chatUnsub = null; } openFriends(); });
+
+// ----- trampas de la comunidad -----
+let fdTab = 'new';
+function openFeed(tab) {
+  if (!needOnline()) return;
+  fdTab = tab || fdTab; show('feed');
+  document.querySelectorAll('#fdTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === fdTab));
+  $('fdList').innerHTML = '<p class="muted">Cargando…</p>';
+  ON.listTraps(fdTab === 'mine').then(list => {
+    if (fdTab === 'mine') list.sort((a, b) => (b.at && b.at.seconds || 0) - (a.at && a.at.seconds || 0));
+    if (!list.length) { $('fdList').innerHTML = `<p class="muted">${fdTab === 'mine' ? 'Todavía no publicaste trampas. Creá una en el editor y tocá “Publicar”.' : 'Todavía no hay trampas publicadas.'}</p>`; return; }
+    $('fdList').innerHTML = '';
+    list.forEach(t => {
+      const d = document.createElement('div'); d.className = 'tcard';
+      d.innerHTML = `<div class="th">${av({ avatar: t.avatar, color: t.color }, 34)}<div class="un">${esc(t.title)}<small>por ${esc(t.authorName)} · <span style="color:var(--yel)">${'★'.repeat(t.difficulty || 1)}</span></small></div></div>
+        <div class="tf"><span>✅ ${t.solves} la resolvieron</span><span>${t.mySolve ? '🏅 Resuelta en ' + fmt(t.mySolve.time * 1000) : ''}</span></div>
+        <div class="tb"><button class="abtn pri">▶ Jugar</button><button class="abtn lk">${t.myLike ? '❤️' : '🤍'} ${t.likes}</button>${t.author === me.uid ? '<button class="abtn">👥</button><button class="abtn">🗑️</button>' : ''}</div>`;
+      const bs = d.querySelectorAll('.tb button');
+      bs[0].onclick = () => playFeedTrap(t);
+      bs[1].onclick = async () => { t.myLike = !t.myLike; t.likes += t.myLike ? 1 : -1; bs[1].textContent = (t.myLike ? '❤️ ' : '🤍 ') + t.likes; await ON.toggleLike(t.id, t.myLike).catch(() => { }); };
+      if (bs[2]) bs[2].onclick = async () => { const s = await ON.trapSolvers(t.id); modal(`<h2>Quién la resolvió</h2>${s.length ? s.map(x => `<div class="urow">${av(x, 30)}<div class="un">${esc(x.name)}</div><b class="val">${fmt(x.time * 1000)} · ${x.taps}</b></div>`).join('') : '<p>Nadie todavía 😈</p>'}<div class="btns"><button class="abtn" onclick="closeModal()">Cerrar</button></div>`); };
+      if (bs[3]) bs[3].onclick = async () => { await ON.deleteTrap(t.id); d.remove(); toast('Trampa borrada'); };
+      $('fdList').appendChild(d);
+    });
+  }).catch(e => { console.error(e); $('fdList').innerHTML = '<p class="muted">No se pudo cargar.</p>'; });
+}
+function playFeedTrap(t) {
+  const r = decodeLevel(t.code); if (!r) { toast('Trampa dañada'); return; }
+  game.trapName = t.authorName; game.trapId = t.id;
+  startGame(r.L, 'trap', t.title, `<b>${esc(t.authorName)}</b> publicó esta trampa. ¿La podés resolver?`);
+}
+window.publishTrapOnline = async (code, score) => {
+  if (!needOnline()) return;
+  modal(`<h2>🌐 Publicar en la comunidad</h2><p>Ponele un nombre a tu trampa:</p><input type="text" id="mxT" maxlength="40" placeholder="Ej: El laberinto del diablo">
+    <div class="btns"><button class="abtn pri" id="mx1">Publicar</button><button class="abtn" onclick="closeModal()">Cancelar</button></div>`);
+  $('mx1').onclick = async () => {
+    try { await ON.publishTrap(code, $('mxT').value.trim() || 'Trampa sin nombre', score); closeModal(); toast('¡Trampa publicada! 😈'); openFeed('mine'); }
+    catch (e) { toast('No se pudo publicar'); console.error(e); }
+  };
+};
+
+// ----- arranque -----
+$('mUser') && ($('mUser').onclick = () => me ? openProfile() : (ON.enabled ? loginModal() : needOnline()));
+$('mRanks') && ($('mRanks').onclick = () => openRanks());
+$('mFriends') && ($('mFriends').onclick = () => openFriends());
+document.querySelectorAll('#rkTabs button').forEach(b => b.onclick = () => openRanks(b.dataset.t));
+document.querySelectorAll('#fdTabs button').forEach(b => b.onclick = () => openFeed(b.dataset.t));
+document.querySelectorAll('.back2').forEach(b => b.onclick = () => { refreshMenu(); show('menu'); });
+let firstAuth = true;
+ON.init(p => {
+  me = p; renderUserChip();
+  if (p) mergeCloud();
+  if (!p && firstAuth && ON.enabled) { let seen = false; try { seen = localStorage.getItem('prisma_login_seen') === '1'; localStorage.setItem('prisma_login_seen', '1'); } catch (e) { } if (!seen) loginModal(true); }
+  firstAuth = false;
+  if (p && $('menu').classList.contains('on')) refreshMenu();
+});
+renderUserChip();
+
+$('frCopy').onclick = e => copyText(`¡Agregame en PRISMA! Mi código de amigo es ${$('frCode').textContent}`, e.target);
+$('frWa').onclick = () => { $('frWa').href = wa(`¡Agregame en PRISMA! 🔦 Mi código de amigo es ${$('frCode').textContent}`); };
+</script>
+</body>
+</html>
