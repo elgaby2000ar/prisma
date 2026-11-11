@@ -230,9 +230,9 @@ body{background:radial-gradient(ellipse at 50% 120%,#3a0d5c 0%,#12062a 45%,#0504
   <button id="mUser" class="uchip"></button>
   <div class="logowrap">
     <svg class="prismsvg" viewBox="0 0 120 62"><defs><linearGradient id="pg" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#cfc6ff" stop-opacity=".6"/></linearGradient></defs>
-      <line x1="0" y1="40" x2="48" y2="34" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-      <g stroke-width="3" stroke-linecap="round" opacity=".95"><line x1="66" y1="32" x2="120" y2="14" stroke="#ff3b6b"/><line x1="66" y1="33" x2="120" y2="24" stroke="#ffd23f"/><line x1="66" y1="34" x2="120" y2="34" stroke="#3dffb0"/><line x1="66" y1="35" x2="120" y2="44" stroke="#2fa8ff"/><line x1="66" y1="36" x2="120" y2="54" stroke="#b34dff"/></g>
-      <polygon points="60,4 84,56 36,56" fill="rgba(255,255,255,.08)" stroke="url(#pg)" stroke-width="3" stroke-linejoin="round"/></svg>
+      <g stroke-linecap="round" fill="none"><polyline points="2,46 40,46 60,30" stroke="#ff3b6b" stroke-width="4"/><polyline points="60,30 82,14 118,14" stroke="#ff3b6b" stroke-width="4"/><polyline points="60,30 82,46 118,46" stroke="#2fa8ff" stroke-width="4"/></g>
+      <rect x="50" y="20" width="20" height="20" rx="4" transform="rotate(45 60 30)" fill="rgba(255,255,255,.12)" stroke="url(#pg)" stroke-width="3"/>
+      <circle cx="118" cy="14" r="4" fill="#ff3b6b"/><circle cx="118" cy="46" r="4" fill="#2fa8ff"/></svg>
     <h1 class="logo" data-t="PRISMA">PRISMA</h1>
   </div>
   <div class="sub">puzzles de luz</div>
@@ -1489,10 +1489,11 @@ function needOnline() {
   if (!me) { loginModal(); return false; }
   return true;
 }
+const IS_APP = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 function loginModal(first) {
   modal(`<h2>${first ? '¡Bienvenido a PRISMA!' : 'Iniciá sesión'}</h2>
     <p>Entrá para aparecer en los rankings, sumar amigos y publicar tus trampas.</p>
-    <div class="btns"><button class="abtn pri" id="lgG"><span style="background:#fff;color:#4285f4;border-radius:50%;padding:0 6px;margin-right:6px;font-weight:900">G</span>Entrar con Google</button>
+    <div class="btns"><button class="abtn pri" id="lgG" style="${IS_APP ? 'display:none' : ''}"><span style="background:#fff;color:#4285f4;border-radius:50%;padding:0 6px;margin-right:6px;font-weight:900">G</span>Entrar con Google</button>
     <button class="abtn" id="lgA">👤 Jugar como invitado</button>
     <button class="abtn" id="lgN" style="background:none;border:0;color:var(--dim)">Ahora no</button></div>
     <p style="font-size:12px;color:var(--dim)">Como invitado podés jugar online. Después podés vincular tu cuenta de Google sin perder nada.</p>`);
@@ -1537,7 +1538,7 @@ function openProfile() {
     <div class="statgrid"><div><b>${totalStars()}</b><span>estrellas</span></div><div><b>${r.ic}</b><span>${r.name}</span></div><div><b>🔥${streak()}</b><span>racha</span></div></div>
     <label class="lbl">Tu código de amigo</label><div class="code" style="text-align:center;font-size:22px;letter-spacing:4px">${esc(me.friendCode || '—')}</div>
     <div class="btns" style="display:flex;flex-direction:column;gap:9px;margin-top:14px">
-      ${me.guest ? '<button class="abtn pri" id="pLink">🔗 Vincular con Google (no perdés nada)</button>' : ''}
+      ${me.guest && !IS_APP ? '<button class="abtn pri" id="pLink">🔗 Vincular con Google (no perdés nada)</button>' : ''}
       <button class="abtn" id="pBlocked">🚫 Usuarios bloqueados</button>
       <button class="abtn" id="pOut">Cerrar sesión</button>
       <button class="abtn" id="pDel" style="color:#ff6b8a">Eliminar mi cuenta</button>
@@ -1726,6 +1727,20 @@ ON.init(p => {
   if (p && $('menu').classList.contains('on')) refreshMenu();
 });
 renderUserChip();
+
+// ----- app Android: botón atrás -----
+if (IS_APP && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+  window.Capacitor.Plugins.App.addListener('backButton', () => {
+    if ($('modal').classList.contains('on')) { closeModal(); return; }
+    const cur = [...document.querySelectorAll('.screen')].find(x => x.classList.contains('on'));
+    const id = cur && cur.id;
+    if (id === 'menu') { window.Capacitor.Plugins.App.exitApp(); return; }
+    if (id === 'duel') { $('dExit').click(); return; }
+    if (id === 'game') { $('gBack').click(); return; }
+    if (id === 'chat') { $('chBack').click(); return; }
+    refreshMenu(); show('menu');
+  });
+}
 
 $('frCopy').onclick = e => copyText(`¡Agregame en PRISMA! Mi código de amigo es ${$('frCode').textContent}`, e.target);
 $('frWa').onclick = () => { $('frWa').href = wa(`¡Agregame en PRISMA! 🔦 Mi código de amigo es ${$('frCode').textContent}`); };

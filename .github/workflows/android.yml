@@ -1,0 +1,69 @@
+name: Compilar APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Preparar proyecto Capacitor
+        run: |
+          mkdir -p app/www
+          cp index.html online.js firebase-config.js app/www/
+          cp capacitor.config.json app/
+          cd app
+          npm init -y >/dev/null
+          npm i @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/app@7 @capacitor/splash-screen@7
+          npx cap add android
+          mkdir -p assets && cp ../android-assets/*.png assets/
+          npx --yes @capacitor/assets@3 generate --android --iconBackgroundColor '#14082e' --splashBackgroundColor '#14082e' || echo "sin íconos generados"
+          npx cap sync android
+          # solo vertical
+          sed -i 's/<activity/<activity android:screenOrientation="portrait"/' android/app/src/main/AndroidManifest.xml
+          # número de versión = número de compilación
+          sed -i "s/versionCode 1/versionCode ${GITHUB_RUN_NUMBER}/; s/versionName \"1.0\"/versionName \"1.${GITHUB_RUN_NUMBER}\"/" android/app/build.gradle
+
+      - name: Compilar
+        run: |
+          mkdir -p ~/.android && cp android-assets/debug.keystore ~/.android/debug.keystore
+          cd app/android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../../prisma.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prisma-apk
+          path: prisma.apk
+
+      - name: Publicar en Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-${{ github.run_number }}
+          name: PRISMA 1.${{ github.run_number }}
+          body: |
+            APK de PRISMA lista para instalar en Android.
+            Descarga directa de la última versión: https://github.com/${{ github.repository }}/releases/latest/download/prisma.apk
+          files: prisma.apk
+          make_latest: true

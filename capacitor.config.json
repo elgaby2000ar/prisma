@@ -1,0 +1,10 @@
+{
+  "appId": "com.elgaby2000ar.prisma",
+  "appName": "PRISMA",
+  "webDir": "www",
+  "backgroundColor": "#05040f",
+  "android": { "backgroundColor": "#05040f" },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 1200, "backgroundColor": "#14082e", "showSpinner": false }
+  }
+}
