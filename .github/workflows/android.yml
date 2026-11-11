@@ -34,7 +34,7 @@ jobs:
           cp capacitor.config.json app/
           cd app
           npm init -y >/dev/null
-          npm i @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/app@7 @capacitor/splash-screen@7
+          npm i @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8 @capacitor/app@8 @capacitor/splash-screen@8
           npx cap add android
           mkdir -p assets && cp ../android-assets/*.png assets/
           npx --yes @capacitor/assets@3 generate --android --iconBackgroundColor '#14082e' --splashBackgroundColor '#14082e' || echo "sin íconos generados"

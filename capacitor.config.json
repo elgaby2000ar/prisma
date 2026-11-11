@@ -5,6 +5,7 @@
   "backgroundColor": "#05040f",
   "android": { "backgroundColor": "#05040f" },
   "plugins": {
+    "SystemBars": { "insetsHandling": "css", "style": "DARK" },
     "SplashScreen": { "launchShowDuration": 1200, "backgroundColor": "#14082e", "showSpinner": false }
   }
 }

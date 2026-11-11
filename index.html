@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>PRISMA · puzzles de luz</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Orbitron:wght@600;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
@@ -219,6 +219,14 @@ body{background:radial-gradient(ellipse at 50% 120%,#3a0d5c 0%,#12062a 45%,#0504
 #game>.bar.bottom{background:linear-gradient(0deg,rgba(5,4,15,.85),transparent)}
 #game .tip{backdrop-filter:blur(4px)}
 #game{max-width:none}
+
+/* zonas seguras (barra de estado y de navegación del celular) */
+:root{--sat:var(--safe-area-inset-top,env(safe-area-inset-top,0px));--sab:var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px));--sal:var(--safe-area-inset-left,env(safe-area-inset-left,0px));--sar:var(--safe-area-inset-right,env(safe-area-inset-right,0px))}
+.screen{padding-top:var(--sat);padding-bottom:var(--sab);padding-left:var(--sal);padding-right:var(--sar)}
+#menu{padding-top:calc(30px + var(--sat))}
+.uchip{top:calc(14px + var(--sat))}
+#modal{padding-top:calc(20px + var(--sat));padding-bottom:calc(20px + var(--sab))}
+.toast{bottom:calc(90px + var(--sab))}
 
 </style>
 </head>
