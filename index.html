@@ -227,6 +227,11 @@ body{background:radial-gradient(ellipse at 50% 120%,#3a0d5c 0%,#12062a 45%,#0504
 .uchip{top:calc(14px + var(--sat))}
 #modal{padding-top:calc(20px + var(--sat));padding-bottom:calc(20px + var(--sab))}
 .toast{bottom:calc(90px + var(--sab))}
+#infobox{position:fixed;z-index:40;display:none;padding:12px 14px;border-radius:16px;background:rgba(24,16,60,.96);border:1px solid #6a56c8;box-shadow:0 0 30px rgba(179,77,255,.45),0 10px 30px rgba(0,0,0,.6);font-size:14px;line-height:1.4;color:#e6e0ff;pointer-events:none}
+#infobox.on{display:block;animation:cardIn .2s cubic-bezier(.2,1.5,.4,1)}
+#infobox .ih{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+#infobox .ih span{font-size:24px}
+#infobox .ih b{font-family:Bungee,Inter;font-weight:400;font-size:16px;color:#ffd23f}
 
 </style>
 </head>
@@ -312,6 +317,7 @@ body{background:radial-gradient(ellipse at 50% 120%,#3a0d5c 0%,#12062a 45%,#0504
 
 <div id="modal"><div class="card" id="mCard"></div></div>
 <div class="toast" id="toast"></div>
+<div id="infobox"></div>
 
 <script src="firebase-config.js"></script>
 <script src="online.js"></script>
@@ -535,12 +541,39 @@ const TIERS = {
 const CAMPAIGN = ['t0', 't1', 't1', 't2', 't2', 't3', 't3', 't3', 't3', 'b1',
   't4', 't4', 't5', 't5', 't6', 't6', 't7', 't7', 't7', 'b2',
   't8', 't8', 't9', 't9', 't9', 't10', 't10', 't10', 't10', 'b3'];
-const WORLDS = [{ name: 'Mundo 1 · Neón', slack: 5, boss: 90 }, { name: 'Mundo 2 · Portales', slack: 4, boss: 120 }, { name: 'Mundo 3 · Enlaces', slack: 3, boss: 150 }];
+const WORLDS = [{ name: 'Mundo 1 · Neón', slack: 5, boss: 150 }, { name: 'Mundo 2 · Portales', slack: 4, boss: 180 }, { name: 'Mundo 3 · Enlaces', slack: 3, boss: 210 }];
+// ---------- jefes: elegir la próxima posición/color del jefe ----------
+function popcount(n) { let c = 0; while (n) { n &= n - 1; c++; } return c; }
+function bossPhase(L, orient, seed, prev) {
+  const rnd = mulberry32(seed);
+  const T = Object.assign({}, L, { targets: [], pieces: L.pieces.map((p, i) => Object.assign({}, p, { o: orient[i] })) });
+  const grid = buildGrid(T), { out } = enumerate(T, grid), W = L.w;
+  const best = new Map();
+  for (let s = 0; s < out.length; s++) {
+    const col = out[s];
+    if (L.bombs.some(([x, y]) => col[y * W + x])) continue;
+    const d = popcount(s);
+    for (let i = 0; i < col.length; i++) {
+      if (!col[i] || grid[i]) continue;
+      const key = i * 4 + col[i];
+      if (!best.has(key) || best.get(key) > d) best.set(key, d);
+    }
+  }
+  let cand = [];
+  best.forEach((d, key) => { const i = key >> 2, c = key & 3; const x = i % W, y = Math.floor(i / W); if (prev && prev.x === x && prev.y === y) return; cand.push({ x, y, c, dist: d }); });
+  let pool = cand.filter(q => q.dist >= 2 && q.dist <= 4 && (!prev || q.c !== prev.c));
+  if (!pool.length) pool = cand.filter(q => q.dist >= 2 && q.dist <= 5);
+  if (!pool.length) pool = cand.filter(q => q.dist >= 1);
+  if (!pool.length) return null;
+  pool.sort((a, b) => b.dist - a.dist || a.y - b.y || a.x - b.x);
+  const top = pool.filter(q => q.dist >= pool[0].dist - 1);
+  return top[Math.floor(rnd() * top.length)];
+}
 function campaignLevel(n) {
   const P = TIERS[CAMPAIGN[n]];
   for (let s = 0; s < 60; s++) {
     const L = generate(1000 * (n + 1) + s * 7919 + 23, P);
-    if (L) { const W = WORLDS[Math.floor(n / 10)]; L.limit = L.minTaps + W.slack; if (n % 10 === 9) L.timeLimit = W.boss; return L; }
+    if (L) { const W = WORLDS[Math.floor(n / 10)]; L.limit = L.minTaps + W.slack; if (n % 10 === 9) { L.timeLimit = W.boss; L.boss = 3; } return L; }
   }
   return null;
 }
@@ -549,7 +582,7 @@ function dailyLevel(dateNum) {
   for (let s = 0; s < 60; s++) { const L = generate(dateNum * 31 + s * 104729, P); if (L) return L; }
 }
 
-if (typeof module !== 'undefined') module.exports = { DX, DY, REF, buildGrid, trace, isSolved, controls, enumerate, countSolutions, mulberry32, generate, TIERS, CAMPAIGN, WORLDS, campaignLevel, dailyLevel };
+if (typeof module !== 'undefined') module.exports = { bossPhase, popcount, DX, DY, REF, buildGrid, trace, isSolved, controls, enumerate, countSolutions, mulberry32, generate, TIERS, CAMPAIGN, WORLDS, campaignLevel, dailyLevel };
 
 </script>
 <script>
@@ -842,6 +875,46 @@ const confetti = (function () {
 })();
 function starsHtml(s) { let h = '<div class="stars">'; for (let i = 0; i < 3; i++) h += `<span class="st${i < s ? ' on' : ''}" style="animation-delay:${.25 + i * .28}s">★</span>`; return h + '</div>'; }
 function starSfx(s) { for (let i = 0; i < s; i++) setTimeout(() => { if (!muted) try { tone(660 + i * 220, 0, .18, 'triangle', .1, 990 + i * 330); } catch (e) { } }, 250 + i * 280); }
+// ===== info al mantener apretado =====
+function cellInfo(b, x, y) {
+  const L = b.L, c = b.grid[y * L.w + x];
+  if (!c) return null;
+  const CN = { 1: ['rojo', '🔴'], 2: ['azul', '🔵'], 3: ['violeta', '🟣'] };
+  if (c.k === 'P') {
+    const p = L.pieces[c.i];
+    if (p.fixed) return ['🔩', 'Espejo fijo', 'Desvía el rayo, pero <b>no se puede girar</b>.'];
+    if (p.t === 's') return ['┆', 'Divisor' + (p.g ? ' enlazado ' + p.g : ''), 'Refleja el rayo <b>y además lo deja pasar</b>: lo parte en dos. Tocalo para girarlo.' + (p.g ? ' Gira junto con los del mismo número.' : '')];
+    if (p.g) return ['🔗', 'Espejo enlazado ' + p.g, 'Al tocarlo giran <b>todos los del número ' + p.g + '</b> a la vez.'];
+    return ['╱', 'Espejo', 'Tocalo para girarlo. <b>Dobla el rayo</b> en ángulo recto.'];
+  }
+  if (c.k === 'T') {
+    const t = L.targets[c.i], [n, ic] = CN[t.c];
+    if (t.boss) return ['👹', 'Jefe ' + n, `Le quedan <b>${b.bossHP} vida${b.bossHP > 1 ? 's' : ''}</b>. Cada vez que lo electrocutás con rayo <b>${t.c === 3 ? 'rojo + azul' : n}</b>, se escapa a otro lugar y puede cambiar de color.`];
+    return [ic, 'Monstruo ' + n, t.c === 3 ? 'Solo cae si le llegan <b>rayo rojo y azul a la vez</b>.' : `Solo cae con <b>rayo ${n}</b>. Si le llega otro color, se ríe detrás de un escudo.`];
+  }
+  if (c.k === 'B') return ['💣', 'Bomba', 'Si el rayo la toca, <b>explota</b>. ¡Esquivala!'];
+  if (c.k === 'W') return ['🧱', 'Muro', '<b>Frena el rayo</b>: no lo deja pasar.'];
+  if (c.k === 'E') { const e = L.emitters[c.i]; return [CN[e.c][1], 'Láser ' + CN[e.c][0], 'Dispara un rayo ' + CN[e.c][0] + ' en la dirección de la flecha.']; }
+  if (c.k === 'O') return ['🌀', 'Portal', 'El rayo que entra <b>sale por el otro portal del mismo color</b>, en la misma dirección.'];
+  return null;
+}
+function showCellInfo(b, x, y, cx, cy) {
+  const inf = cellInfo(b, x, y); if (!inf) return false;
+  const el = $('infobox');
+  el.innerHTML = `<div class="ih"><span>${inf[0]}</span><b>${inf[1]}</b></div><div>${inf[2]}</div>`;
+  el.classList.add('on');
+  const w = Math.min(280, innerWidth - 20); el.style.width = w + 'px';
+  const h = el.offsetHeight;
+  let left = Math.min(Math.max(cx - w / 2, 10), innerWidth - w - 10);
+  let top = b.opt.rotated ? cy + 50 : cy - h - 50;
+  if (!b.opt.rotated && top < 20) top = cy + 50;
+  if (b.opt.rotated && top + h > innerHeight - 10) top = cy - h - 50;
+  el.style.left = left + 'px'; el.style.top = top + 'px';
+  el.style.transform = b.opt.rotated ? 'rotate(180deg)' : '';
+  if (navigator.vibrate) try { navigator.vibrate(15); } catch (e) { }
+  return true;
+}
+function hideCellInfo() { $('infobox').classList.remove('on'); }
 
 // ================= tablero =================
 const boards = new Set();
@@ -849,6 +922,10 @@ class Board {
   constructor(cv, opt = {}) {
     this.cv = cv; this.ctx = cv.getContext('2d'); this.opt = opt; this.parts = [];
     cv.addEventListener('pointerdown', e => this.down(e));
+    cv.addEventListener('pointerup', e => this.up(e));
+    cv.addEventListener('pointercancel', () => this.cancelPress());
+    cv.addEventListener('pointerleave', () => this.cancelPress());
+    cv.addEventListener('contextmenu', e => e.preventDefault());
     boards.add(this);
   }
   load(L, keep) {
@@ -863,7 +940,36 @@ class Board {
     if (!keep) { this.taps = 0; this.hints = 0; this.solved = false; this.failed = false; this.t0 = performance.now(); this.tEnd = 0; this.hl = -1; this.parts = []; this.locked = false; }
     this.limit = this.opt.noLimit ? 0 : (this.L.limit || 0); this.timeLimit = this.opt.noLimit ? 0 : (this.L.timeLimit || 0);
     this.retrace(); this.resize();
-    if (!this.opt.editor) this.prepSolutions();
+    if (!this.opt.editor) { if (this.L.boss && !keep) this.bossInit(); else this.prepSolutions(); }
+  }
+  bossInit() {
+    this.bossHP = this.L.boss; this.bossMax = this.L.boss; this.L.targets = []; this.minAcc = 0;
+    this.limit = 0; this.bossNext(null);
+  }
+  bossNext(prev) {
+    const ph = this.bossMax - this.bossHP;
+    const b = bossPhase(this.L, this.orient, (this.L.seed || 1) * 7 + ph, prev);
+    if (!b) { this.L.targets = prev ? [prev] : []; return; }
+    this.L.targets = [{ x: b.x, y: b.y, c: b.c, boss: true }];
+    this.grid = buildGrid(this.L); this.litSet = null; this.retrace();
+    // soluciones relativas a la base (para las pistas)
+    const T = clone(this.L); T.pieces.forEach((p, i) => p.o = this.base[i]);
+    this.sols = countSolutions(T).sols;
+    this.minAcc += b.dist; this.minTaps = this.minAcc;
+    if (!this.opt.noLimit) { const W = WORLDS[Math.floor((game.idx || 0) / 10)] || WORLDS[0]; this.limit = (this.limit ? this.taps : 0) + b.dist + (prev ? 2 : W.slack); }
+    this.bossAppear = performance.now();
+  }
+  bossHit() {
+    const t = this.L.targets[0]; this.bossHP--; this.locked = true;
+    sfx('boom'); this.quake = performance.now();
+    this.pop((t.x + .5) * this.cs, (t.y - .3) * this.cs, ['¡AUCH!', '¡OUCH!', '¡ME LAS PAGARÁS!'][this.bossMax - this.bossHP - 1] || '¡AUCH!', '#ff7a1a', 1.5);
+    for (let i = 0; i < 40; i++) { const a = Math.random() * 6.28, v = 2 + Math.random() * 5; this.fire.push({ x: (t.x + .5) * this.cs, y: (t.y + .5) * this.cs, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, r: 2 + Math.random() * 3, kind: 'spark' }); }
+    setTimeout(() => {
+      this.bossNext({ x: t.x, y: t.y, c: t.c });
+      const n = this.L.targets[0];
+      if (n) { this.pop((n.x + .5) * this.cs, (n.y - .5) * this.cs, '¡VOLVÍ! +⚡', '#3dffb0', 1.1); for (let i = 0; i < 26; i++) { const a = Math.random() * 6.28, v = 1 + Math.random() * 3; this.fire.push({ x: (n.x + .5) * this.cs, y: (n.y + .5) * this.cs, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, r: this.cs * .12, kind: 'smoke' }); } }
+      sfx('lit'); this.locked = false; if (this.opt.onTap) this.opt.onTap(this);
+    }, 1100);
   }
   prepSolutions() {
     const { sols } = countSolutions(this.L);
@@ -915,8 +1021,18 @@ class Board {
     const x = Math.floor(px / this.cs), y = Math.floor(py / this.cs);
     if (x < 0 || y < 0 || x >= this.L.w || y >= this.L.h) return;
     if (this.opt.onCell) return this.opt.onCell(x, y);
-    this.tap(x, y);
+    this.cancelPress();
+    this.press = { x, y, cx: e.clientX, cy: e.clientY, info: false };
+    this.press.timer = setTimeout(() => { if (this.press) { this.press.info = showCellInfo(this, x, y, this.press.cx, this.press.cy); } }, 380);
   }
+  up(e) {
+    const p = this.press; if (!p) return;
+    clearTimeout(p.timer); this.press = null;
+    if (p.info) { hideCellInfo(); return; }
+    if (Math.hypot(e.clientX - p.cx, e.clientY - p.cy) > 30) return;
+    this.tap(p.x, p.y);
+  }
+  cancelPress() { if (this.press) { clearTimeout(this.press.timer); if (this.press.info) hideCellInfo(); this.press = null; } }
   tap(x, y) {
     if (this.solved || this.locked || this.failed) return;
     const c = this.grid[y * this.L.w + x];
@@ -933,6 +1049,7 @@ class Board {
     if (this.newBooms.length) this.explode(this.newBooms);
     if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) { }
     if (this.opt.onTap) this.opt.onTap(this);
+    if (this.bossHP > 1 && this.L.targets.length && isSolved(this.L, this.col)) { this.bossHit(); return; }
     if (isSolved(this.L, this.col)) {
       this.solved = true; this.tEnd = performance.now();
       this.burnT = performance.now() + 250; this.booms = this.booms || [];
@@ -1089,7 +1206,13 @@ class Board {
       else if (got) st = { mode: 'shield', got };
       else st = { mode: 'idle' };
       if (st.mode === 'burn' && Math.random() < .5) { const k = (now - this.burnT) / BURN_MS; if (k > .3) this.fire.push({ x: ctr(t.x) + (Math.random() - .5) * cs * .4, y: ctr(t.y) - cs * .1, vx: (Math.random() - .5) * .6, vy: -1 - Math.random() * 1.5, life: .9, r: 2 + Math.random() * 2, kind: Math.random() < .35 ? 'smoke' : 'spark' }); }
-      drawMonster(c, ctr(t.x), ctr(t.y), cs, t, st, now);
+      if (t.boss) {
+        const ap = this.bossAppear ? Math.min(1, (now - this.bossAppear) / 400) : 1;
+        drawMonster(c, ctr(t.x), ctr(t.y), cs * 1.85 * (.3 + .7 * ap), t, st, now);
+        if (!this.burnT) { const hp = this.bossHP, mx = this.bossMax; c.font = `${cs * .26}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+          for (let h = 0; h < mx; h++) { c.globalAlpha = h < hp ? 1 : .25; c.fillText('❤️', ctr(t.x) + (h - (mx - 1) / 2) * cs * .3, ctr(t.y) - cs * 1.2); } c.globalAlpha = 1;
+          c.font = `400 ${cs * .2}px Bungee, sans-serif`; c.fillStyle = '#ffd23f'; c.strokeStyle = '#1a0630'; c.lineWidth = 3; c.strokeText('JEFE', ctr(t.x), ctr(t.y) + cs * 1.05); c.fillText('JEFE', ctr(t.x), ctr(t.y) + cs * 1.05); }
+      } else drawMonster(c, ctr(t.x), ctr(t.y), cs, t, st, now);
     });
     // explosiones
     if (this.booms.length || this.fire.length) {
@@ -1113,6 +1236,16 @@ class Board {
         else { p.vx *= .93; p.vy = p.vy * .93 + .05; p.life -= .025; c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(255,${150 + 100 * p.life | 0},${60 * p.life | 0},${p.life})`; }
         c.beginPath(); c.arc(p.x, p.y, p.r, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over';
       }
+    }
+    // mano del tutorial
+    if (this.tutHand != null && this.tutHand >= 0 && !this.solved && !this.locked) {
+      const p = L.pieces[this.tutHand], hx = ctr(p.x), hy = ctr(p.y), k = (now % 1100) / 1100;
+      c.save(); c.globalCompositeOperation = 'lighter';
+      c.strokeStyle = `rgba(255,230,90,${1 - k})`; c.lineWidth = 3; c.beginPath(); c.arc(hx, hy, cs * (.3 + .35 * k), 0, 7); c.stroke(); c.restore();
+      const press = k < .25 ? k / .25 : k < .45 ? 1 - (k - .25) / .2 : 0;
+      c.save(); c.translate(hx + cs * .12, hy + cs * .42 - press * cs * .12); c.rotate(-.35);
+      c.font = `${cs * .8}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'top'; c.shadowColor = '#000'; c.shadowBlur = 10;
+      c.fillText('👆', 0, -cs * .1); c.restore();
     }
     // carteles flotantes
     if (this.pops.length) {
@@ -1197,7 +1330,14 @@ function portalsOk(L) {
 
 // ================= partida (campaña / diario / trampa) =================
 const game = { board: null, mode: null, idx: 0, timer: null };
-const gb = new Board($('gCv'), { full: $('game'), onSolve: b => onSolve(b), onFail: (b, w) => onFail(b, w), onTap: () => updStat() });
+const gb = new Board($('gCv'), { full: $('game'), onSolve: b => onSolve(b), onFail: (b, w) => onFail(b, w), onTap: b => { if (tut.on && b.tutHandPrev !== undefined) { } updStat(); tutAfterTap(); } });
+function tutAfterTap() {
+  if (!tut.on) return;
+  const cur = gb.stateBits(), diff = gb.sols[0] ^ cur;
+  tut.wrong = tut.lastLeft !== undefined && popc(diff) > tut.lastLeft;
+  tut.lastLeft = popc(diff); if (!tut.wrong) tut.steps++;
+  tutUpdate(false);
+}
 game.board = gb;
 function updStat() {
   const b = gb; if (!b.L) return;
@@ -1217,7 +1357,7 @@ const TIPS = [
   [L => L.pieces.some(p => p.fixed), 'Los espejos grises con tornillos están <b>fijos</b>: no se pueden girar.'],
   [L => L.targets.length > 1, 'Hay <b>varios monstruos</b>: hay que electrocutarlos a todos <b>a la vez</b>.'],
   [L => L.pieces.some(p => p.t === 's'), 'El <b>divisor</b> (celeste) refleja el rayo y además lo deja pasar: ¡uno se vuelve dos!'],
-  [L => !!L.timeLimit, '⚠️ <b>NIVEL JEFE</b>: además de la energía, tenés <b>tiempo limitado</b>. ¡Rápido!'],
+  [L => !!L.boss, '👹 <b>¡JEFE!</b> Tiene <b>3 vidas</b>: cada vez que lo electrocutás se escapa a otro lugar y puede cambiar de color. Cada golpe te da energía extra ⚡. ¡Y hay reloj!'],
   [L => (L.portals || []).length > 0, '🌀 <b>Portales</b>: el rayo que entra en uno sale por el otro del mismo color, en la misma dirección.'],
   [L => L.emitters.some(e => e.c === 2), 'Ahora hay <b>dos colores</b>. Cada monstruo cae solo con su color. El <b>violeta</b> (mitad roja, mitad azul) necesita <b>rojo + azul</b> al mismo tiempo.'],
   [L => L.pieces.some(p => p.g), '🔗 <b>Espejos enlazados</b>: los que tienen el mismo número y color <b>giran juntos</b>. Mover uno mueve al otro.'],
@@ -1236,6 +1376,28 @@ function tipFor(n) {
 function starsFor(b) { const extra = b.taps - b.minTaps; let s = extra <= 0 ? 3 : extra <= 2 ? 2 : 1; if (b.hints) s = Math.min(s, 2); return s; }
 const starStr = s => '★'.repeat(s) + '<i>' + '★'.repeat(3 - s) + '</i>';
 
+// ---------- tutorial (niveles 1 y 2) ----------
+const tut = { on: false, n: 0, steps: 0 };
+function tutStart(n) {
+  store.tutDone = store.tutDone || {};
+  tut.on = game.mode === 'camp' && n < 2 && !store.tutDone[n]; tut.n = n; tut.steps = 0; tut.wrong = false; tut.lastLeft = undefined;
+  gb.tutHand = null; if (tut.on) { tut.lastLeft = popc(gb.sols[0] ^ gb.stateBits()); tutUpdate(true); }
+}
+function tutUpdate(first) {
+  if (!tut.on) { gb.tutHand = null; return; }
+  const cur = gb.stateBits(), best = gb.sols[0], diff = best ^ cur, left = popc(diff);
+  if (gb.solved || !left) { gb.tutHand = null; return; }
+  if (tut.n === 1 && tut.steps >= 1) { gb.tutHand = null; $('gTip').innerHTML = '¡Ahora seguí vos! 💪 Pensá cada giro: la energía ⚡ es limitada.'; return; }
+  let j = 0; while (!((diff >> j) & 1)) j++;
+  gb.tutHand = gb.C[j][0];
+  let msg;
+  if (first) msg = tut.n === 0 ? '👆 <b>Tocá el espejo</b> que marca la mano para girarlo. Así se desvía el rayo.' : '👆 Hay un <b>muro</b> 🧱 que frena el rayo. Tocá el espejo marcado para esquivarlo.';
+  else if (tut.wrong) msg = '🤔 Ese no era. Tocá el espejo que marca la mano.';
+  else if (left === 1) msg = '🔥 ¡Último giro! Llevá el rayo hasta el <b>monstruo</b> 👾 y electrocutalo… ¡sin tocar la bomba 💣!';
+  else msg = '✨ ¡Bien! Mirá cómo cambió el rayo. Seguí con el próximo espejo.';
+  if (tut.n === 0 && !first && left > 1 && tut.steps === 1) msg += '<br><small>Tip: <b>mantené apretada</b> cualquier pieza para saber qué hace.</small>';
+  $('gTip').innerHTML = msg; $('gTip').classList.add('on');
+}
 function startGame(L, mode, title, tip) {
   game.mode = mode; show('game');
   $('gTitle').innerHTML = (mode === 'camp' ? `<small>${WORLDS[Math.floor(game.idx / 10)].name}</small>` : mode === 'daily' ? '<small>Desafío diario</small>' : mode === 'trap' ? '<small>Modo trampa</small>' : '') + esc0(title);
@@ -1244,7 +1406,7 @@ function startGame(L, mode, title, tip) {
   game.L0 = L;
   gb.opt.noLimit = mode !== 'camp';
   $('gHint').style.display = mode === 'daily' ? 'none' : '';
-  requestAnimationFrame(() => { gb.load(L); updStat(); });
+  requestAnimationFrame(() => { gb.load(L); updStat(); tutStart(game.idx); });
 }
 $('gReset').onclick = () => { if (gb.solved) return; gb.load(game.L0); updStat(); };
 $('gHint').onclick = () => {
@@ -1257,7 +1419,7 @@ $('gBack').onclick = () => { if (game.mode === 'camp') openLevels(); else if (ga
 function playCamp(n) {
   game.idx = n;
   const boss = n % 10 === 9;
-  startGame(getCamp(n), 'camp', (boss ? '👹 JEFE · ' : 'Nivel ') + (n + 1), tipFor(n));
+  startGame(getCamp(n), 'camp', (boss ? '👹 JEFE · ' : 'Nivel ') + (n + 1), boss ? TIPS.find(t => t[1].includes('JEFE'))[1] : tipFor(n));
 }
 function onFail(b, why) {
   const n = game.idx;
@@ -1273,6 +1435,7 @@ function onSolve(b) {
   const t = fmt(b.time());
   if (game.mode === 'camp') {
     const s = starsFor(b), n = game.idx, before = rankOf(totalStars());
+    if (tut.on) { store.tutDone = store.tutDone || {}; store.tutDone[n] = true; tut.on = false; }
     store.stars[n] = Math.max(store.stars[n] || 0, s); save(); window.onlineCamp && onlineCamp();
     const after = rankOf(totalStars());
     const next = n + 1 < CAMPAIGN.length, boss = n % 10 === 9;
@@ -1547,6 +1710,8 @@ $('mHow').onclick = () => modal(`<h2>Cómo jugar</h2><ul class="how">
   <li>🌀 Los <b>portales</b> teletransportan el rayo al otro del mismo color.</li>
   <li>🔗 Los <b>espejos enlazados</b> (mismo número) giran juntos.</li>
   <li>⚡ En la campaña la <b>energía es limitada</b>: cada giro gasta 1. Los <b>jefes</b> 👹 además tienen reloj.</li>
+  <li>👆 <b>Mantené apretada</b> cualquier pieza para ver qué hace.</li>
+  <li>👹 Los <b>jefes</b> tienen 3 vidas: cada vez que los electrocutás, cambian de lugar y de color.</li>
   <li>⭐ Menos giros = más estrellas. Cada nivel tiene una sola solución.</li></ul>
   <div class="btns"><button class="abtn pri" onclick="closeModal()">¡A jugar!</button></div>`);
 document.querySelectorAll('.back:not(#gBack)').forEach(b => b.onclick = () => { refreshMenu(); show('menu'); });
