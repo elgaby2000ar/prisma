@@ -1008,12 +1008,17 @@ function musStep(s, t) {
 function startInvasion() {
   Object.assign(inv, { over: false, wave: 0, toSpawn: 0, spawnT: 0, mons: [], hp: 3, score: 0, combo: 0, lastKill: 0, between: 1.2, kills: 0, last: performance.now(), id: 0, bombTimers: [] });
   const L = invasionField((Math.random() * 1e9) | 0);
-  startGame(L, 'inv', 'Invasión', '👾 <b>¡Vienen los monstruos!</b> Girá los espejos para freírlos con el láser de <b>su color</b> antes de que lleguen a tu base. ¡Mientras bajan <b>mutan</b> y se hacen más duros! Si el rayo toca una 💣, ¡explota y vuela a los que estén cerca!');
+  startGame(L, 'inv', 'Invasión', '👾 <b>¡Vienen los monstruos!</b> Girá los espejos para freírlos con el láser de <b>su color</b> antes de que lleguen a tu base. Mientras bajan <b>mutan</b>: se hacen más duros y, cuando les crecen patas, <b>patean tus espejos</b>. ¡Y en cada oleada los láseres cambian de lugar! Si el rayo toca una 💣, ¡explota y vuela a los que estén cerca!');
+  // ninguna bomba arranca tocada por un rayo
+  setTimeout(() => { const b = gb, L = b.L; if (!b.col) return; for (let pass = 0; pass < 6; pass++) { let moved = false;
+    L.bombs.forEach(bm => { if (b.col[bm[1] * L.w + bm[0]]) { for (let t = 0; t < 100; t++) { const x = Math.floor(Math.random() * L.w), y = 2 + Math.floor(Math.random() * (L.h - 5)); if (!b.grid[y * L.w + x] && !b.col[y * L.w + x]) { bm[0] = x; bm[1] = y; moved = true; break; } } } });
+    if (moved) { b.grid = buildGrid(L); b.hitSet = null; b.retrace(); b.hitSet = new Set(); } else break; } }, 60);
   setTimeout(() => { if (game.mode === 'inv') { $('gTip').classList.remove('on'); requestAnimationFrame(() => gb.resize()); } }, 6000);
   musStart();
 }
 function invWaveStart() {
-  inv.wave++; inv.toSpawn = 3 + 2 * inv.wave; inv.spawnT = .4;
+  inv.wave++; inv.toSpawn = 3 + 2 * inv.wave; inv.spawnT = 1.2;
+  if (inv.wave >= 2) invMoveLasers();
   gb.pop(gb.cw / 2, gb.ch * .35, 'OLEADA ' + inv.wave, '#3dffb0', 2, true); sfx('beep');
 }
 function invSpawn() {
@@ -1022,7 +1027,34 @@ function invSpawn() {
   const tank = W >= 4 && Math.random() < .2;
   const x = Math.floor(Math.random() * gb.L.w);
   const gen = monsterGen(Math.random() * 1e6 | 0); gen.legs = 0; gen.arms = 0; gen.eyes = Math.min(gen.eyes, 2); gen.spots = false;
-  inv.mons.push({ gen, mut: 0, id: ++inv.id, x, tx: x, y: -.6, c, tank, hp: (tank ? 1.1 : .5) + W * .02, v: Math.min(1.15, .42 + .06 * (W - 1)) * (tank ? .7 : 1), zig: W >= 3 && Math.random() < .3, zt: 1 + Math.random(), dead: 0, zap: false });
+  const hp = (.9 + .3 * W) * (tank ? 2 : 1);
+  inv.mons.push({ gen, mut: 0, id: ++inv.id, x, tx: x, y: -.6, c, tank, hp, maxhp: hp, cell: -1, v: Math.min(1.1, .45 + .06 * (W - 1)) * (tank ? .7 : 1), zig: W >= 3 && Math.random() < .3, zt: 1 + Math.random(), dead: 0, zap: false });
+}
+function invKick(b, pi, m) {
+  const cs = b.cs;
+  for (const q of b.C[b.ctrlOf[pi]]) { b.orient[q] ^= 1; b.tAng[q] += Math.PI / 2; }
+  b.retrace();
+  b.pop((m.x + .5) * cs, (m.y + .1) * cs, '¡PATADA!', '#ff9f1c', .8);
+  b.shake = { i: pi, t: performance.now() }; sfx('tap');
+  if (b.newBooms && b.newBooms.length) { b.explode(b.newBooms); invBoom(b); }
+}
+function invMoveLasers() {
+  const b = gb, L = b.L, W = L.w, H = L.h, ri = n => Math.floor(Math.random() * n);
+  const taken = new Set();
+  L.emitters.forEach(e => {
+    for (let t = 0; t < 80; t++) {
+      const side = ri(3); let x, y, d;
+      if (side === 0) { x = 0; y = 1 + ri(H - 4); d = 0; } else if (side === 1) { x = W - 1; y = 1 + ri(H - 4); d = 2; } else { y = 0; x = 1 + ri(W - 2); d = 1; }
+      const cur = b.grid[y * W + x], nx = x + DX[d], ny = y + DY[d];
+      if ((cur && cur.k !== 'E') || taken.has(y * W + x) || (L.emitters.some(o => o !== e && o.x === x && o.y === y))) continue;
+      const nxt = b.grid[ny * W + nx]; if (nxt && nxt.k === 'E') continue;
+      e.x = x; e.y = y; e.d = d; taken.add(y * W + x); break;
+    }
+  });
+  b.grid = buildGrid(L); b.hitSet = new Set(); b.retrace();
+  if (b.newBooms && b.newBooms.length) { b.explode(b.newBooms); invBoom(b); }
+  L.emitters.forEach(e => { for (let q = 0; q < 16; q++) { const a = Math.random() * 6.28; b.fire.push({ x: (e.x + .5) * b.cs, y: (e.y + .5) * b.cs, vx: Math.cos(a) * 2, vy: Math.sin(a) * 2, life: .8, r: 3, kind: 'spark' }); } });
+  b.pop(b.cw / 2, b.ch * .55, '¡LOS LÁSERES SE MOVIERON!', '#2fa8ff', 1, true);
 }
 function invKill(m, byBomb) {
   const now = performance.now();
@@ -1074,9 +1106,15 @@ function invUpdate(b, c) {
       m.x += (m.tx - m.x) * Math.min(1, dt * 6);
       // muta a medida que se acerca a la base: más ojos, patas, brazos… y más resistente
       const lvl = Math.floor((m.y + .6) / 2);
-      if (lvl > m.mut) { m.mut = lvl; mutateGen(m.gen, now); m.hp += .12; b.pop((m.x + .5) * cs, (m.y - .2) * cs, '¡MUTÓ!', '#c86bff', .7);
+      if (lvl > m.mut) { m.mut = lvl; mutateGen(m.gen, now); m.hp += .15; m.maxhp += .15; b.pop((m.x + .5) * cs, (m.y - .2) * cs, '¡MUTÓ!', '#c86bff', .7);
         for (let q = 0; q < 12; q++) { const a = Math.random() * 6.28; b.fire.push({ x: (m.x + .5) * cs, y: (m.y + .5) * cs, vx: Math.cos(a) * 1.5, vy: Math.sin(a) * 1.5, life: .6, r: cs * .08, kind: 'smoke' }); } }
       const cx = Math.round(m.x), cy = Math.floor(m.y + .5);
+      // los que tienen patas patean los espejos que pisan
+      const ck = cy * W + cx;
+      if (ck !== m.cell && cy >= 0 && cy < H) {
+        m.cell = ck; const gc = b.grid[ck];
+        if (gc && gc.k === 'P' && !L.pieces[gc.i].fixed && m.gen.legs >= 2) invKick(b, gc.i, m);
+      }
       m.zap = false;
       if (cy >= 0 && cy < H) { const col = b.col[cy * W + cx]; if (m.c === 3 ? col === 3 : (col & m.c)) { m.zap = true; m.hp -= dt; if (m.hp <= 0) invKill(m, false); } }
       if (!m.dead && m.y >= H - 1) {
@@ -1107,7 +1145,8 @@ function invUpdate(b, c) {
     const st = m.dead ? (m.reached ? { mode: 'dead' } : { mode: 'burn', t: m.dead - BURN_MS * .5 }) : m.zap ? { mode: 'zap' } : { mode: 'idle' };
     if (m.reached && m.dead) continue;
     drawMonster(c, (m.x + .5) * cs, (m.y + .5) * cs, cs * (m.tank ? 1.3 : 1), t, st, now);
-    if (!m.dead && m.tank) { const w0 = cs * .6, hp0 = (1.1 + inv.wave * .02); c.fillStyle = '#300'; c.fillRect((m.x + .5) * cs - w0 / 2, (m.y - .25) * cs, w0, 5); c.fillStyle = '#ff3b6b'; c.fillRect((m.x + .5) * cs - w0 / 2, (m.y - .25) * cs, w0 * Math.max(0, m.hp / hp0), 5); }
+    if (!m.dead) { const w0 = cs * (m.tank ? .8 : .6), bx = (m.x + .5) * cs - w0 / 2, byy = (m.y - (m.gen.top !== undefined ? .35 : .25)) * cs, q = Math.max(0, m.hp / m.maxhp);
+      c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(bx - 1, byy - 1, w0 + 2, 6); c.fillStyle = q > .5 ? '#3dffb0' : q > .25 ? '#ffd23f' : '#ff3b6b'; c.fillRect(bx, byy, w0 * q, 4); }
   }
   const key = inv.score + '|' + inv.hp + '|' + inv.wave; if (key !== inv.hudKey) { inv.hudKey = key; updStat(); }
 }
