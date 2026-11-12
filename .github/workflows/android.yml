@@ -34,8 +34,12 @@ jobs:
           cp capacitor.config.json app/
           cd app
           npm init -y >/dev/null
-          npm i @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8 @capacitor/app@8 @capacitor/splash-screen@8
+          npm i @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8 @capacitor/app@8 @capacitor/splash-screen@8 @capacitor-firebase/authentication@8 firebase@12
           npx cap add android
+          # login con Google nativo (Firebase)
+          cp ../android-assets/google-services.json android/app/google-services.json
+          sed -i 's/^ext {/ext {\n    rgcfaIncludeGoogle = true/' android/variables.gradle
+          grep -n "rgcfaIncludeGoogle" android/variables.gradle
           mkdir -p assets && cp ../android-assets/*.png assets/
           npx --yes @capacitor/assets@3 generate --android --iconBackgroundColor '#14082e' --splashBackgroundColor '#14082e' || echo "sin íconos generados"
           npx cap sync android

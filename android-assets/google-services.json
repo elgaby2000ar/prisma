@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "898114832497",
+    "project_id": "prisma-9b615",
+    "storage_bucket": "prisma-9b615.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:898114832497:android:17e6bb25168cb30b8633d0",
+        "android_client_info": {
+          "package_name": "com.elgaby2000ar.prisma"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "898114832497-n1e18d6jldvt0hqeuc3k7rtjqc63vggv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB9cdlIiGjJkQIsliJe9ZRJgTe87iH3QCY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "898114832497-n1e18d6jldvt0hqeuc3k7rtjqc63vggv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -2080,11 +2080,11 @@ const IS_APP = !!(window.Capacitor && window.Capacitor.isNativePlatform && windo
 function loginModal(first) {
   modal(`<h2>${first ? '¡Bienvenido a PRISMA!' : 'Iniciá sesión'}</h2>
     <p>Entrá para aparecer en los rankings, sumar amigos y publicar tus trampas.</p>
-    <div class="btns"><button class="abtn pri" id="lgG" style="${IS_APP ? 'display:none' : ''}"><span style="background:#fff;color:#4285f4;border-radius:50%;padding:0 6px;margin-right:6px;font-weight:900">G</span>Entrar con Google</button>
+    <div class="btns"><button class="abtn pri" id="lgG"><span style="background:#fff;color:#4285f4;border-radius:50%;padding:0 6px;margin-right:6px;font-weight:900">G</span>Entrar con Google</button>
     <button class="abtn" id="lgA">👤 Jugar como invitado</button>
     <button class="abtn" id="lgN" style="background:none;border:0;color:var(--dim)">Ahora no</button></div>
     <p style="font-size:12px;color:var(--dim)">Como invitado podés jugar online. Después podés vincular tu cuenta de Google sin perder nada.</p>`);
-  $('lgG').onclick = async () => { try { await ON.signInGoogle(); closeModal(); } catch (e) { toast('No se pudo entrar con Google'); console.error(e); } };
+  $('lgG').onclick = async () => { try { await ON.signInGoogle(); closeModal(); } catch (e) { toast('No se pudo entrar con Google' + (e && e.message ? ' (' + String(e.message).slice(0, 60) + ')' : '')); console.error(e); } };
   $('lgA').onclick = async () => { try { await ON.signInGuest(); closeModal(); } catch (e) { toast('No se pudo entrar como invitado'); console.error(e); } };
   $('lgN').onclick = closeModal;
 }
@@ -2127,7 +2127,7 @@ function openProfile() {
     <div class="statgrid"><div><b>${totalStars()}</b><span>estrellas</span></div><div><b>${r.ic}</b><span>${r.name}</span></div><div><b>🔥${streak()}</b><span>racha</span></div></div>
     <label class="lbl">Tu código de amigo</label><div class="code" style="text-align:center;font-size:22px;letter-spacing:4px">${esc(me.friendCode || '—')}</div>
     <div class="btns" style="display:flex;flex-direction:column;gap:9px;margin-top:14px">
-      ${me.guest && !IS_APP ? '<button class="abtn pri" id="pLink">🔗 Vincular con Google (no perdés nada)</button>' : ''}
+      ${me.guest ? '<button class="abtn pri" id="pLink">🔗 Vincular con Google (no perdés nada)</button>' : ''}
       <button class="abtn" id="pBlocked">🚫 Usuarios bloqueados</button>
       <button class="abtn" id="pOut">Cerrar sesión</button>
       <button class="abtn" id="pDel" style="color:#ff6b8a">Eliminar mi cuenta</button>
@@ -2140,7 +2140,14 @@ function openProfile() {
     try { await ON.saveProfile({ name: n, avatar: pAv, color: pCol }); toast('Perfil guardado ✓'); renderUserChip(); } catch (e) { toast('No se pudo guardar'); }
   };
   if ($('pLink')) $('pLink').onclick = async () => { try { const r = await ON.linkGoogle(); toast(r === 'linked' ? '¡Cuenta vinculada! ✓' : 'Entraste con tu cuenta de Google'); openProfile(); } catch (e) { toast('No se pudo vincular'); } };
-  $('pOut').onclick = async () => { await ON.signOut(); show('menu'); };
+  $('pOut').onclick = async () => {
+    if (!me.guest) { await ON.signOut(); show('menu'); return; }
+    modal(`<h2>⚠️ ¡Cuidado!</h2><p>Estás jugando como <b>invitado</b>. Si cerrás sesión, <b>esta cuenta se pierde</b>: tu nombre, avatar, amigos y récords online.</p><p>Vinculala con Google y la vas a poder recuperar siempre, en cualquier celular.</p>
+      <div class="btns"><button class="abtn pri" id="mx1">🔗 Vincular con Google</button><button class="abtn" id="mx2">Seguir como invitado</button><button class="abtn" id="mx3" style="color:#ff6b8a">Cerrar sesión igual</button></div>`);
+    $('mx1').onclick = async () => { try { const r = await ON.linkGoogle(); closeModal(); toast(r === 'linked' ? '¡Cuenta vinculada! ✓' : 'Entraste con tu cuenta de Google'); openProfile(); } catch (e) { toast('No se pudo vincular'); } };
+    $('mx2').onclick = closeModal;
+    $('mx3').onclick = async () => { closeModal(); await ON.signOut(); show('menu'); };
+  };
   $('pBlocked').onclick = openBlocked;
   $('pDel').onclick = () => {
     modal(`<h2>¿Eliminar tu cuenta?</h2><p>Se borran tu perfil, tus amigos y tu código. Tu progreso queda solo en este celular. <b>No se puede deshacer.</b></p>
